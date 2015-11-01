@@ -33,7 +33,7 @@ def set_interval(func, sec):
     return t
 
 #updated print
-def uprint(new):
+def _uprint(new):
     CURSOR_UP_ONE = '\x1b[1A'
     ERASE_LINE = '\x1b[2K'
     print(CURSOR_UP_ONE + ERASE_LINE + str(new))
@@ -97,7 +97,7 @@ def display(args=None):
     reader = csv.DictReader(csv_in)
     count = 1
     for row in reader:
-        print str(count) + ') ' +row['task']
+        print str(count) + '  ' +row['task']
         count += 1
     csv_in.close
 
@@ -122,7 +122,7 @@ def _get(num, field='asd'):
         
     csv_in.close
 
-def complete(arg):
+def complete(arg): #on completion a task is moved to the other file todo_complete.csv where it's stored for later mining
     pass
 
 def track(num): #task time tracking
@@ -136,7 +136,7 @@ def track(num): #task time tracking
     def timed_output(st, delay):
         while True:
             d = timedelta(seconds=time.time() - st)
-            uprint(d)
+            _uprint(d)
             time.sleep(delay)
             
     delay = 1
@@ -159,7 +159,19 @@ def add_time(): #add hours to hours spent
 def due(): #set due of the task, keywords like today, tomorrow, day after tomorrow, next week, two days, two weeks, someday
     pass
 
-def important(): #set the importance flag
+def important(num): #set the importance flag
+    i = _get(num, 'important')
+    if i is '':
+        i = 0
+    else:
+        i = int(i)
+    if i is 0:
+        i +=1
+        print 'Task "'+num+'" set to important' 
+    else:
+        i -=1
+        print 'Task "'+num+'" set to unimportant' 
+    _set(num, 'important', i)
     pass
 
 def tasklist(args): #asigns a task to a task list / project
@@ -168,6 +180,7 @@ def tasklist(args): #asigns a task to a task list / project
 
 def tags(): #asigns tags to he task, add tags to a task list, remove the tags, etc..
     pass
+
 
 def imprt(): #imports a CSV
     pass
@@ -209,10 +222,12 @@ fn = {
     'l': display,
     'list': display,
     't': track,
-    'track': track
+    'track': track,
+    'i': important,
+    'important': important
 }
 
-def execute(command, args=None):
+def _execute(command, args=None):
     if command in fn:
         fn[command](value)
     else:
@@ -230,9 +245,9 @@ if m:
             
             if len(dashes) is 1:
                 for cm in command:
-                    execute(cm, value)
+                    _execute(cm, value)
             else:
-                execute(command, value)
+                _execute(command, value)
             
 else:
     #add new todo
