@@ -10,9 +10,11 @@ args = ' '.join(args)
 fieldnames = ['task', 'created', 'important', 'due', 'time_spent', 'tasklist', 'tags' ]
 filename = 'todo.csv'
 tmp_filename = 'tmp_todo.csv'
+filename_completed = 'todo_completed.csv'
+tmp_filename_completed = 'tmp_todo_completed.csv'
 
-pat_cmds = re.compile(r"\-\-?([a-z0-9\-]+\s?[^\s\-]*)", re.IGNORECASE)
-pat_sepcmd = re.compile(r"([a-z\-]+)\s?([^\s\s]*)", re.IGNORECASE)
+pat_cmds = re.compile(r"(\-\-?[a-zA-Z0-9\-]+\s?[^\-]*)")
+pat_sepcmd = re.compile(r"(\-\-?)([a-zA-Z0-9\-]+)\s?([^\-]*)")
 m = pat_cmds.findall(args)
 
 def delete(num):
@@ -32,7 +34,7 @@ def delete(num):
     os.rename(tmp_filename, filename)
 
 
-def list(arg):
+def list(args=None):
     csv_in = open('todo.csv')
     reader = csv.DictReader(csv_in)
     count = 1
@@ -44,7 +46,6 @@ def list(arg):
 def complete(arg):
     pass
 
-
 def track(): #task time tracking
     pass
 
@@ -55,9 +56,6 @@ def due(): #set due of the task, keywords like today, tomorrow, day after tomorr
     pass
 
 def important(): #set the importance flag
-    pass
-
-def get(): #method of getting all kinds of tasks
     pass
 
 def tasklist(): #asigns a task to a task list / project
@@ -84,7 +82,7 @@ def new(args):
         writer.writerow({'task': args, 'created': time.time()})
         csv_in.close
         csv_out.close
-        os.rename('tmp_todo.csv', 'todo.csv')
+        os.rename(tmp_filename, filename)
 
 
 
@@ -97,18 +95,27 @@ fn = {
     'list': list
 }
 
+def execute(command, args=None):
+    if command in fn:
+        fn[command](value)
+    else:
+        print 'Error: Unknown command '+command
+
+
 if m:
     #execute commands
     for cmd in m:
-        c = pat_sepcmd.search(cmd)
-        #TODO: if it has one dash and multiple letters break the letters as commands and pass them the same value
+        c = pat_sepcmd.search(cmd.strip())
         if c:
-            command = c.group(1)
-            value = c.group(2)
-            if command in fn:
-                fn[command](value)
+            dashes = c.group(1)
+            command = c.group(2)
+            value = c.group(3)
+            
+            if len(dashes) is 1:
+                for cm in command:
+                    execute(cm, value)
             else:
-                print 'Error: Unknown command '+command
+                execute(command, value)
             
 else:
     #add new todo
@@ -117,6 +124,3 @@ else:
     else:
         print args
         new(args)
-            # with open('todo.csv') as csvfile:
-            #     reader = csv.DictReader(csvfile)
-        
