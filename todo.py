@@ -192,14 +192,59 @@ def important(num): #set the importance flag
 
 def tasklist(args): #asigns a task to a task list / project
     #TODO multiple task asigns
-    pts = args.split(' ', 1)
+    pts = args.split(' ', 2)
     if len(pts) < 2:
-        print 'Error: tasklist option requires 2 parameters, first the task id, second tasklist name'
+        print 'Error: tasklist option requires 2 parameters, first the task id, second tagnames separated by space'
         return
+    pts[1] = re.sub(r"@",'',pts[1])
     _set(pts[0], 'tasklist', pts[1])
 
-def tag(): #asigns tags to he task, add tags to a task list, remove the tags, etc..
-    pass
+def _csvlist(string):
+    pat_inside = re.compile(r"^\[\'(.*)\'\]$")
+    r = pat_inside.search(string)
+    if not r:
+        return None
+    return re.split(r"\',\s?\'", r.group(1))
+
+def tag(args): #asigns tags to he task, add tags to a task list, remove the tags, etc..
+    pts = args.split(' ', 1)
+    
+    if len(pts) < 2:
+        print 'Error: tag option requires 2 parameters, first the task id, second tag names separated by space'
+        return
+    
+    pts[1] = re.sub(r"\+",'',pts[1])
+    ntags = pts[1].split(' ')
+    
+    tags = _get(pts[0], 'tags')
+    
+    if not tags == '':
+        tags = _csvlist(tags)
+        otags = set(tags)  
+        ntags = set(ntags)
+        ntags = tags + list(ntags-otags)
+        
+    _set(pts[0], 'tags', ntags)
+    
+def rmtag(args):
+    pts = args.split(' ', 1)
+    
+    if len(pts) < 2:
+        print 'Error: rmtag option requires 2 parameters, first the task id, second tag names separated by space'
+        return
+    
+    pts[1] = re.sub(r"\+",'',pts[1])
+    ntags = pts[1].split(' ')
+    
+    tags = _get(pts[0], 'tags')
+    
+    if not tags == '':
+        tags = _csvlist(tags)
+        otags = set(tags)  
+        ntags = set(ntags)
+        ntags = list(otags-ntags)
+    _set(pts[0], 'tags', ntags)
+
 
 def imprt(): #imports a CSV
     pass
@@ -207,9 +252,7 @@ def imprt(): #imports a CSV
 def edit(): #edits task by a given id, asks user to dubmit the new title
     pass
 
-
 def new(args):
-    print args
     new_task = {'created': time.time(),
                 'important': 0,
                 'due': 'someday'}
@@ -242,6 +285,7 @@ def new(args):
         writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerow(new_task)
+        #print added task with the id 1
         csv_out.close
     else:
         csv_in = open(filename)
@@ -249,8 +293,11 @@ def new(args):
         reader = csv.DictReader(csv_in)
         writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
         writer.writeheader()
+        count = 1
         for row in reader:
             writer.writerow(row)
+            count += 1
+        #print added task with the id
         writer.writerow(new_task)
         csv_in.close
         csv_out.close
@@ -270,7 +317,9 @@ fn = {
     'i': important,
     'important': important,
     'T': tasklist,
-    'tasklist': tasklist
+    'tasklist': tasklist,
+    'tag': tag,
+    'rmtag': rmtag
 }
 
 def _execute(command, args=None):
@@ -300,5 +349,4 @@ else:
     if args.strip() == '':
        display()
     else:
-        print args
         new(args)
