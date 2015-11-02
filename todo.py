@@ -32,29 +32,6 @@ def _uprint(new):
     ERASE_LINE = '\x1b[2K'
     print(CURSOR_UP_ONE + ERASE_LINE + str(new))
 
-def delete(num):
-    csv_in = open(filename)
-    csv_out =  open(tmp_filename, 'w')
-    reader = csv.DictReader(csv_in)
-    reader = list(reader)
-    
-    if num == 'last':
-        num = len(reader)
-    num = int(num)
-    
-    writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
-    writer.writeheader()
-    
-    count = 1
-    for row in reader:
-        if count is not num:
-            writer.writerow(row)
-        count += 1
-        
-    csv_in.close
-    csv_out.close
-    os.rename(tmp_filename, filename)
-
 def _set(num, field, value):
     csv_in = open(filename)
     csv_out =  open(tmp_filename, 'w')
@@ -77,7 +54,7 @@ def _set(num, field, value):
             reader[num] = value
         reader[num]['last_modified'] = time.time()
     except IndexError:
-        print 'Error: Nonexistent entry ' + str(num+1)
+        print 'Error: Nonexistent entry', str(num+1)
     
     for row in reader:
         writer.writerow(row)
@@ -85,6 +62,40 @@ def _set(num, field, value):
     csv_in.close
     csv_out.close
     os.rename(tmp_filename, filename)
+    
+def _get(num, field='asd'):
+    csv_in = open(filename)
+    reader = csv.DictReader(csv_in)
+    reader = list(reader)
+    
+    if num == 'last':
+        num = len(reader)
+    else: 
+        num = int(num)
+    num -= 1
+    
+    try:
+        if field:
+            return reader[num][field]
+        else:
+            return reader[num]
+    except IndexError:
+        print 'Error: Nonexistent entry', str(num+1)
+        
+    csv_in.close
+    
+def _csvlist(string):
+    pat_inside = re.compile(r"^\[\'(.*)\'\]$")
+    r = pat_inside.search(string)
+    if not r:
+        return None
+    return re.split(r"\',\s?\'", r.group(1))
+
+def _execute(command, args=None):
+    if command in fn:
+        fn[command](value)
+    else:
+        print 'Error: Unknown command',command
 
 def display_tasklist(tasklist):
     csv_in = open(filename)
@@ -113,32 +124,34 @@ def display(args=None):
             count += 1
         csv_in.close
 
-def _get(num, field='asd'):
+def delete(num):
     csv_in = open(filename)
+    csv_out =  open(tmp_filename, 'w')
     reader = csv.DictReader(csv_in)
     reader = list(reader)
     
     if num == 'last':
         num = len(reader)
-    else: 
-        num = int(num)
-    num -= 1
+    num = int(num)
     
-    try:
-        if field:
-            return reader[num][field]
-        else:
-            return reader[num]
-    except IndexError:
-        print 'Error: Nonexistent entry ' + str(num+1)
+    writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
+    writer.writeheader()
+    
+    count = 1
+    for row in reader:
+        if count is not num:
+            writer.writerow(row)
+        count += 1
         
     csv_in.close
+    csv_out.close
+    os.rename(tmp_filename, filename)
 
 def complete(arg): #on completion a task is moved to the other file todo_complete.csv where it's stored for later mining
     pass
 
 def track(num): #task time tracking
-    #get the previous value, if empty start tiem is time now
+    #TODO: log of times per day / statistics
     st = _get(num, 'time_spent')
     if st is '':
         st = time.time()
@@ -168,7 +181,7 @@ def track(num): #task time tracking
 def addtime(): #add hours to hours spent
     pass
 
-def removetime(): #remove hours to hours spent
+def rmtime(): #remove hours to hours spent
     pass
 
 def due(): #set due of the task, keywords like today, tomorrow, day after tomorrow, next week, two days, two weeks, someday
@@ -193,18 +206,14 @@ def important(num): #set the importance flag
 def tasklist(args): #asigns a task to a task list / project
     #TODO multiple task asigns
     pts = args.split(' ', 2)
-    if len(pts) < 2:
+    if len(pts) < 1:
         print 'Error: tasklist option requires 2 parameters, first the task id, second tagnames separated by space'
         return
-    pts[1] = re.sub(r"@",'',pts[1])
+    if len(pts) > 1:
+        pts[1] = re.sub(r"@",'',pts[1])
+    else:
+        pts.insert(1, '')
     _set(pts[0], 'tasklist', pts[1])
-
-def _csvlist(string):
-    pat_inside = re.compile(r"^\[\'(.*)\'\]$")
-    r = pat_inside.search(string)
-    if not r:
-        return None
-    return re.split(r"\',\s?\'", r.group(1))
 
 def tag(args): #asigns tags to he task, add tags to a task list, remove the tags, etc..
     pts = args.split(' ', 1)
@@ -243,10 +252,11 @@ def rmtag(args):
         otags = set(tags)  
         ntags = set(ntags)
         ntags = list(otags-ntags)
-    _set(pts[0], 'tags', ntags)
+        _set(pts[0], 'tags', ntags)
 
 
 def imprt(): #imports a CSV
+    #maybe parses your code for TODO: comments displays line number in task text
     pass
 
 def edit(): #edits task by a given id, asks user to dubmit the new title
@@ -303,6 +313,31 @@ def new(args):
         csv_out.close
         os.rename(tmp_filename, filename)
 
+def help(args=None):
+    print '''
+TODO v1.0 - CLI task manager with time tracking
+<http://todotron.com>
+
+Usage:  todo ...TITLE...[@TASKLIST][+TAG]
+        Add new task with the title, can have one task list and multiple tags
+        
+        todo
+        Lists all the tasks
+        
+        todo [OPTION] ...PARAMS...
+        Performs an option
+        
+        
+    -l, --list      [TASKLIST [TAG]]    lists all tasks, or all task within a list or with a tag
+    -d, --delete    ID[,ID]             deletes a task by a given task ID
+    -c, --complete  ID[,ID]             completes a task by a given ID
+    -t, --track     ID                  time track single task, exit keyboard interupt
+    -i, --important ID[,ID]             toggles the important state
+    -T, --tasklist  ID[,ID] [TASKLIST]  adds tasks to a tasklist
+    --tag           ID[,ID] TAG[ TAG]   adds tags to tasks
+    --rmtag         ID[,ID] TAG[ TAG]   removes existing tags from tasks
+    -h, --help                          displays this help
+'''
 
 
 fn = {
@@ -319,14 +354,10 @@ fn = {
     'T': tasklist,
     'tasklist': tasklist,
     'tag': tag,
-    'rmtag': rmtag
+    'rmtag': rmtag,
+    'h': help,
+    'help': help
 }
-
-def _execute(command, args=None):
-    if command in fn:
-        fn[command](value)
-    else:
-        print 'Error: Unknown command '+command
 
 
 if m:
