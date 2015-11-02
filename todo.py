@@ -22,15 +22,9 @@ tmp_filename_completed = 'tmp_todo_completed.csv'
 
 pat_cmds = re.compile(r"(\-\-?[a-zA-Z0-9\-]+\s?[^\-]*)")
 pat_sepcmd = re.compile(r"(\-\-?)([a-zA-Z0-9\-]+)\s?([^\-]*)")
+pat_tl = re.compile(r"^@([^@\s\-]+)")
+pat_tg = re.compile(r"^\+([^\+\s\-]+)")
 m = pat_cmds.findall(args)
-
-def set_interval(func, sec):
-    def func_wrapper():
-        set_interval(func, sec) 
-        func()  
-    t = threading.Timer(sec, func_wrapper)
-    t.start()
-    return t
 
 #updated print
 def _uprint(new):
@@ -92,14 +86,32 @@ def _set(num, field, value):
     csv_out.close
     os.rename(tmp_filename, filename)
 
-def display(args=None):
+def display_tasklist(tasklist):
     csv_in = open(filename)
     reader = csv.DictReader(csv_in)
     count = 1
     for row in reader:
-        print str(count) + '  ' +row['task']
+        if tasklist == row['tasklist']:
+            print str(count) + '  ' +row['task']
         count += 1
     csv_in.close
+
+
+def display(args=None):
+    if args:
+        args = args.strip()
+        tl = pat_tl.search(args)
+        if tl:
+            display_tasklist(tl.group(1))
+    
+    else:
+        csv_in = open(filename)
+        reader = csv.DictReader(csv_in)
+        count = 1
+        for row in reader:
+            print str(count) + '  ' +row['task']
+            count += 1
+        csv_in.close
 
 def _get(num, field='asd'):
     csv_in = open(filename)
@@ -153,13 +165,17 @@ def track(num): #task time tracking
         st = time.time() - st
         _set(num, 'time_spent', st)
 
-def add_time(): #add hours to hours spent
+def addtime(): #add hours to hours spent
+    pass
+
+def removetime(): #remove hours to hours spent
     pass
 
 def due(): #set due of the task, keywords like today, tomorrow, day after tomorrow, next week, two days, two weeks, someday
     pass
 
 def important(num): #set the importance flag
+    #TODO multiple task asigns
     i = _get(num, 'important')
     if i is '':
         i = 0
@@ -175,26 +191,57 @@ def important(num): #set the importance flag
     pass
 
 def tasklist(args): #asigns a task to a task list / project
-    
-    pass
+    #TODO multiple task asigns
+    pts = args.split(' ', 1)
+    if len(pts) < 2:
+        print 'Error: tasklist option requires 2 parameters, first the task id, second tasklist name'
+        return
+    _set(pts[0], 'tasklist', pts[1])
 
-def tags(): #asigns tags to he task, add tags to a task list, remove the tags, etc..
+def tag(): #asigns tags to he task, add tags to a task list, remove the tags, etc..
     pass
-
 
 def imprt(): #imports a CSV
     pass
 
+def edit(): #edits task by a given id, asks user to dubmit the new title
+    pass
+
 
 def new(args):
+    print args
+    new_task = {'created': time.time(),
+                'important': 0,
+                'due': 'someday'}
+    
+    #TODO: check task for @tasklist #tag #tag
+    pat_all_tl = re.compile(r"^@[^@\s\-]+\s?|\s@[^@\s\-]+\s?")
+    pat_all_tg = re.compile(r"\s?\+[^\+\s\-]+\s?")
+    
+    def tlrepl(mo):
+       if mo.group(0).startswith(' ') and mo.group(0).endswith(' '): return ' '
+       else: return ''
+       
+    tl = pat_all_tl.findall(args)
+    if tl:
+        args = re.sub(pat_all_tl, tlrepl, args)
+        new_task['tasklist'] = re.sub(r"[\s@]", '', tl[0])
+    
+    tg = pat_all_tg.findall(args)
+    print tg
+    if tg:
+        args = re.sub(pat_all_tg, tlrepl, args)
+        for i in range(0,len(tg)):
+            tg[i] = re.sub(r"[\s\+]", '', tg[i])
+        new_task['tags'] = tg
+            
+    new_task['task'] = args.strip()
+    
     if not os.path.exists(filename):
         csv_out =  open(filename, 'w')
         writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
         writer.writeheader()
-        writer.writerow({'task': args,
-                         'created': time.time(),
-                         'important': 0,
-                         'due': 'someday'})
+        writer.writerow(new_task)
         csv_out.close
     else:
         csv_in = open(filename)
@@ -204,10 +251,7 @@ def new(args):
         writer.writeheader()
         for row in reader:
             writer.writerow(row)
-        writer.writerow({'task': args,
-                         'created': time.time(),
-                         'important': 0,
-                         'due': 'someday'})
+        writer.writerow(new_task)
         csv_in.close
         csv_out.close
         os.rename(tmp_filename, filename)
@@ -224,7 +268,9 @@ fn = {
     't': track,
     'track': track,
     'i': important,
-    'important': important
+    'important': important,
+    'T': tasklist,
+    'tasklist': tasklist
 }
 
 def _execute(command, args=None):
