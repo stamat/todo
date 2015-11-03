@@ -7,12 +7,14 @@
 
 import sys, os, re, time
 from datetime import datetime, date, timedelta
-import threading
-import csv
+import threading, atexit
+import csv, ConfigParser
 
 args = sys.argv
 args.pop(0)
 args = ' '.join(args)
+
+version = '1.0'
 
 fieldnames = ['task', 'created', 'important', 'due', 'time_spent', 'tasklist', 'tags', 'last_modified' ]
 filename = 'todo.csv'
@@ -26,6 +28,108 @@ pat_tl = re.compile(r"^@([^@\s\-]+)")
 pat_tg = re.compile(r"^\+([^\+\s\-]+)")
 m = pat_cmds.findall(args)
 
+_TIME = 0 #global time var for storing time tracking delta
+
+user_path = os.path.expanduser('~')
+config_path = os.path.join(user_path, '.todo')
+config_cfg = os.path.join(config_path, 'config.cfg')
+
+
+def _bother(default):
+    npath = raw_input('Enter directory to store data files (default='+default+'):').strip()
+    try:
+        assert os.path.exists(npath) and os.path.isdir(npath)
+    except AssertionError:
+        print 'Error: Sorry, the directory "'+npath+'" doesn\'t exits! Please try again.'
+        return _bother(default)
+    
+    return npath
+
+def _readconf(file_path):
+    conf = ConfigParser.RawConfigParser()
+    
+    if not os.path.exists(file_path) and not os.path.isfile(file_path):
+        return conf
+    
+    try:
+        f = open(file_path)
+        conf.readfp(f)
+        f.close
+    except IOError as e:
+        print "I/O error({0}): {1}".format(e.errno, e.strerror)
+        raise
+    
+    return conf
+
+def _setconf(conf, section, key, value):
+    if not conf.has_section(section):
+        conf.add_section(section)
+    conf.set(section, key, value)
+    
+    return conf
+
+def _writeconf(file_path, conf):
+    try:
+        f = open(file_path, 'wb')
+        conf.write(f)
+        f.close
+    except IOError as e:
+        print "I/O error({0}): {1}".format(e.errno, e.strerror)
+        raise
+    
+    return True
+
+conf = _readconf(config_cfg)
+
+
+# FIRST INIT
+if not os.path.exists(config_path):
+    os.mkdir(config_path)
+
+if not os.path.exists(config_cfg):
+    uname = os.path.split(user_path) #XXX: Will this always work?
+    uname = uname[-1]
+    print '''
+TODO v{ver}
+the simple CLI task manager with time tracking
+----------------------------------------------
+
+        Hello, {name}!
+
+It looks like it\'s your first time using this application!?
+If you wish you can enter a directory where you would like to save the CSV todo data files. Saving them to Dropbox folder can be a good idea to backup them and access them across the devices.
+'''.format(ver=version, name=uname.capitalize())
+
+    
+    npath = _bother(config_path)
+    
+    
+    _setconf(conf, 'general', 'dir', npath)
+    _setconf(conf, 'general', 'name', uname.capitalize())
+    _writeconf(config_cfg, conf)
+    
+    print '''
+Thanks, you are a real pal! I'll try to remember that!
+    
+If you plan to use TODO often I suggest you to create a symbolic link via this easy command:
+
+    sudo ln -s todo.py /user/local/bin/todo
+
+or run the installation file supplied.
+
+    
+        ,d88b.d88b,
+        88888888888
+        `Y8888888Y'
+          `Y888Y'  
+            `Y'  
+    '''
+    
+filename = os.path.join(conf.get('general', 'dir'), filename)
+tmp_filename = os.path.join(conf.get('general', 'dir'), tmp_filename)
+filename_completed = os.path.join(conf.get('general', 'dir'), filename_completed)
+tmp_filename_completed = os.path.join(conf.get('general', 'dir'), tmp_filename_completed)
+        
 #updated print
 def _uprint(new):
     CURSOR_UP_ONE = '\x1b[1A'
@@ -63,7 +167,7 @@ def _set(num, field, value):
     csv_out.close
     os.rename(tmp_filename, filename)
     
-def _get(num, field='asd'):
+def _get(num, field=None):
     csv_in = open(filename)
     reader = csv.DictReader(csv_in)
     reader = list(reader)
@@ -96,6 +200,15 @@ def _execute(command, args=None):
         fn[command](value)
     else:
         print 'Error: Unknown command',command
+
+#savetime if tracking a task time and you exit a terminal
+def _savetime():
+    global _TIME
+    if _TIME is not 0:
+        _TIME = time.time() - _TIME
+        _set(num, 'time_spent', _TIME)
+        
+atexit.register(_savetime)
 
 def display_tasklist(tasklist):
     csv_in = open(filename)
@@ -152,11 +265,12 @@ def complete(arg): #on completion a task is moved to the other file todo_complet
 
 def track(num): #task time tracking
     #TODO: log of times per day / statistics
-    st = _get(num, 'time_spent')
-    if st is '':
-        st = time.time()
+    global _TIME
+    _TIME = _get(num, 'time_spent')
+    if _TIME is '':
+        _TIME = time.time()
     else:
-        st = time.time()-float(st)
+        _TIME = time.time()-float(_TIME)
         
     def timed_output(st, delay):
         while True:
@@ -165,7 +279,7 @@ def track(num): #task time tracking
             time.sleep(delay)
             
     delay = 1
-    t = threading.Thread(target = timed_output, args = (st,delay))
+    t = threading.Thread(target = timed_output, args = (_TIME, delay))
     
     print
     t.daemon = True
@@ -175,8 +289,9 @@ def track(num): #task time tracking
         while True:
             time.sleep(delay)
     except KeyboardInterrupt:
-        st = time.time() - st
-        _set(num, 'time_spent', st)
+        _TIME = time.time() - _TIME
+        _set(num, 'time_spent', _TIME)
+        _TIME = 0
 
 def addtime(): #add hours to hours spent
     pass
@@ -215,7 +330,8 @@ def tasklist(args): #asigns a task to a task list / project
         pts.insert(1, '')
     _set(pts[0], 'tasklist', pts[1])
 
-def tag(args): #asigns tags to he task, add tags to a task list, remove the tags, etc..
+def tag(args): #assigns tags to the task, add tags to a task list, remove the tags, etc..
+    #TODO multiple task asigns
     pts = args.split(' ', 1)
     
     if len(pts) < 2:
@@ -315,7 +431,7 @@ def new(args):
 
 def help(args=None):
     print '''
-TODO v1.0 - CLI task manager with time tracking
+TODO v{ver} - CLI task manager with time tracking
 <http://todotron.com>
 
 Usage:  todo ...TITLE...[@TASKLIST][+TAG]
@@ -337,7 +453,7 @@ Usage:  todo ...TITLE...[@TASKLIST][+TAG]
     --tag           ID[,ID] TAG[ TAG]   adds tags to tasks
     --rmtag         ID[,ID] TAG[ TAG]   removes existing tags from tasks
     -h, --help                          displays this help
-'''
+'''.format(ver=version)
 
 
 fn = {
