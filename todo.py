@@ -100,22 +100,14 @@ It looks like it\'s your first time using this application!?
 If you wish you can enter a directory where you would like to save the CSV todo data files. Saving them to Dropbox folder can be a good idea to backup them and access them across the devices.
 '''.format(ver=version, name=uname.capitalize())
 
-    
     npath = _bother(config_path)
-    
-    
+
     _setconf(conf, 'general', 'dir', npath)
     _setconf(conf, 'general', 'name', uname.capitalize())
     _writeconf(config_cfg, conf)
     
     print '''
-Thanks, you are a real pal! I'll try to remember that!
-    
-If you plan to use TODO often I suggest you to create a symbolic link via this easy command:
-
-    sudo ln -s todo.py /user/local/bin/todo
-
-or run the installation file supplied.
+Thanks, you are a real pal!
 
     
         ,d88b.d88b,
@@ -135,30 +127,36 @@ def _uprint(new):
     CURSOR_UP_ONE = '\x1b[1A'
     ERASE_LINE = '\x1b[2K'
     print(CURSOR_UP_ONE + ERASE_LINE + str(new))
+    
+def _parsenum(num, mod=None):
+    num = num.split(',')
+    for i in range(0, len(num)):
+        if num[i] == 'last':
+            num[i] = len(reader)
+        num[i] = int(num[i])
+        if mod:
+            num[i] += mod
+        
+    return num
 
-def _set(num, field, value):
+def _set(num, field, value, value_array = True):
     csv_in = open(filename)
     csv_out =  open(tmp_filename, 'w')
     reader = csv.DictReader(csv_in)
     reader = list(reader)
     
-    if num == 'last':
-        num = len(reader)
-    else: 
-        num = int(num)
-    num -= 1
-    
     writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
     writer.writeheader()
     
-    try:
-        if field:
-            reader[num][field] = value
-        else:
-            reader[num] = value
-        reader[num]['last_modified'] = time.time()
-    except IndexError:
-        print 'Error: Nonexistent entry', str(num+1)
+    for i in range(0, len(num)):
+        try:
+            if field:
+                reader[num[i]][field] = value[i] if value_array else value
+            else:
+                reader[num[i]] = value[i] if value_array else value
+            reader[num[i]]['last_modified'] = time.time()
+        except IndexError:
+            print 'Error: Nonexistent entry', str(num[i]+1)
     
     for row in reader:
         writer.writerow(row)
@@ -172,21 +170,20 @@ def _get(num, field=None):
     reader = csv.DictReader(csv_in)
     reader = list(reader)
     
-    if num == 'last':
-        num = len(reader)
-    else: 
-        num = int(num)
-    num -= 1
+    result = []
     
-    try:
-        if field:
-            return reader[num][field]
-        else:
-            return reader[num]
-    except IndexError:
-        print 'Error: Nonexistent entry', str(num+1)
-        
+    for i in range(0, len(num)):
+        try:
+            if field:
+                result.append(reader[num[i]][field])
+            else:
+                result.append(reader[num[i]])
+        except IndexError:
+            print 'Error: Nonexistent entry', str(num[i]+1)
+    
     csv_in.close
+    
+    return result
     
 def _csvlist(string):
     pat_inside = re.compile(r"^\[\'(.*)\'\]$")
@@ -243,16 +240,20 @@ def delete(num):
     reader = csv.DictReader(csv_in)
     reader = list(reader)
     
-    if num == 'last':
-        num = len(reader)
-    num = int(num)
+    num = _parsenum(num)
     
     writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
     writer.writeheader()
     
     count = 1
     for row in reader:
-        if count is not num:
+        flag = True
+        for i in range(0, len(num)):
+            if count is num[i]:
+                flag = False
+                break
+            
+        if flag:        
             writer.writerow(row)
         count += 1
         
@@ -302,36 +303,40 @@ def rmtime(): #remove hours to hours spent
 def due(): #set due of the task, keywords like today, tomorrow, day after tomorrow, next week, two days, two weeks, someday
     pass
 
-def important(num): #set the importance flag
-    #TODO multiple task asigns
-    i = _get(num, 'important')
-    if i is '':
-        i = 0
-    else:
-        i = int(i)
-    if i is 0:
-        i +=1
-        print 'Task "'+num+'" set to important' 
-    else:
-        i -=1
-        print 'Task "'+num+'" set to unimportant' 
-    _set(num, 'important', i)
-    pass
+def important(num): #task importance toggle
+    num = _parsenum(num, -1)
+    
+    res = _get(num, 'important')
+    
+    for i in range(0, len(num)):
+        if res[i] is '':
+            res[i] = 0
+        else:
+            res[i] = int(res[i])
+        if res[i] is 0:
+            res[i] +=1
+            print 'Task {0} set to important'.format(num[i]+1) 
+        else:
+            res[i] -=1
+            print 'Task {0} set to unimportant'.format(num[i]+1) 
+        
+    _set(num, 'important', res)
 
 def tasklist(args): #asigns a task to a task list / project
     #TODO multiple task asigns
     pts = args.split(' ', 2)
     if len(pts) < 1:
-        print 'Error: tasklist option requires 2 parameters, first the task id, second tagnames separated by space'
+        print 'Error: tasklist option requires 2 parameters, first the task id/ids, second tasklist name'
         return
     if len(pts) > 1:
         pts[1] = re.sub(r"@",'',pts[1])
     else:
         pts.insert(1, '')
-    _set(pts[0], 'tasklist', pts[1])
+        
+    num = _parsenum(pts[0])
+    _set(num, 'tasklist', pts[1], False)
 
 def tag(args): #assigns tags to the task, add tags to a task list, remove the tags, etc..
-    #TODO multiple task asigns
     pts = args.split(' ', 1)
     
     if len(pts) < 2:
@@ -341,15 +346,22 @@ def tag(args): #assigns tags to the task, add tags to a task list, remove the ta
     pts[1] = re.sub(r"\+",'',pts[1])
     ntags = pts[1].split(' ')
     
-    tags = _get(pts[0], 'tags')
+    num = _parsenum(pts[0], -1)
     
-    if not tags == '':
-        tags = _csvlist(tags)
-        otags = set(tags)  
-        ntags = set(ntags)
-        ntags = tags + list(ntags-otags)
-        
-    _set(pts[0], 'tags', ntags)
+    tags = _get(num, 'tags')
+    
+    result = []
+    
+    nntags = set(ntags)
+    for i in range(0, len(num)):
+        if not tags[i] == '':
+            tg = _csvlist(tags[i])
+            otags = set(tg)  
+            result.append(tg + list(nntags-otags))
+        else:
+            result.append(ntags)
+    
+    _set(num, 'tags', result)
     
 def rmtag(args):
     pts = args.split(' ', 1)
@@ -361,14 +373,22 @@ def rmtag(args):
     pts[1] = re.sub(r"\+",'',pts[1])
     ntags = pts[1].split(' ')
     
-    tags = _get(pts[0], 'tags')
+    num = _parsenum(pts[0], -1)
     
-    if not tags == '':
-        tags = _csvlist(tags)
-        otags = set(tags)  
-        ntags = set(ntags)
-        ntags = list(otags-ntags)
-        _set(pts[0], 'tags', ntags)
+    tags = _get(num, 'tags')
+    
+    result = []
+    
+    nntags = set(ntags)
+    for i in range(0, len(num)):
+        if not tags[i] == '':
+            tg = _csvlist(tags[i])
+            otags = set(tg)  
+            result.append(list(otags-nntags))
+        else:
+            result.append('')
+    
+    _set(num, 'tags', result)
 
 
 def imprt(): #imports a CSV
@@ -383,7 +403,7 @@ def new(args):
                 'important': 0,
                 'due': 'someday'}
     
-    #TODO: check task for @tasklist #tag #tag
+    #check task for @tasklist #tag #tag
     pat_all_tl = re.compile(r"^@[^@\s\-]+\s?|\s@[^@\s\-]+\s?")
     pat_all_tg = re.compile(r"\s?\+[^\+\s\-]+\s?")
     
@@ -397,7 +417,7 @@ def new(args):
         new_task['tasklist'] = re.sub(r"[\s@]", '', tl[0])
     
     tg = pat_all_tg.findall(args)
-    print tg
+    
     if tg:
         args = re.sub(pat_all_tg, tlrepl, args)
         for i in range(0,len(tg)):
@@ -435,7 +455,7 @@ TODO v{ver} - CLI task manager with time tracking
 <http://todotron.com>
 
 Usage:  todo ...TITLE...[@TASKLIST][+TAG]
-        Add new task with the title, can have one task list and multiple tags
+        Add a new task, it can have one task list and multiple tags
         
         todo
         Lists all the tasks
@@ -455,7 +475,9 @@ Usage:  todo ...TITLE...[@TASKLIST][+TAG]
     -h, --help                          displays this help
 '''.format(ver=version)
 
-
+#TODO: Verson -v
+#TODO: uninstall
+#TODO: update
 fn = {
     'd': delete,
     'delete': delete,
