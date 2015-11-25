@@ -16,7 +16,17 @@ args = ' '.join(args)
 
 version = '1.0'
 
-fieldnames = ['task', 'created', 'important', 'due', 'time_spent', 'tasklist', 'tags', 'last_modified' ]
+#TODO: Display function displays a header with data: important count, unimportant count, due soon count, due later count
+#TODO: function that lists all task lists
+#TODO: function that lists all tags
+#TODO: COMPLEX DISPLAY QUERY, display due soon, important, by a tasklist and tags
+#TODO: add UID for tasks for server synchronisation, should be creation timestamp in combination with autoincrement ID, to prevent multidevice sync confusion
+#synchronisation should happen by last modified has priority
+#completed tasks has a special additional file for synchronisation newly finished tasks after last synchronisation, server appends to completed.csv on serverside. THINK ABOUT THIS, IT WILL BE A HUGE FILE.
+#TODO: time spent statistics in a file. THINK ABOUT THIS
+#TODO: shorten timestamps to seconds only to save the storage space, except creation timestamp. WARCH THE TIMEZONES! REDUCE ALL TIMES TO GMT +0 to avoid server confusion
+#TODO: droplets gui for this TODO
+fieldnames = ['task', 'created', 'important', 'due', 'time_spent', 'tasklist', 'tags', 'last_modified']
 filename = 'todo.csv'
 tmp_filename = 'tmp_todo.csv'
 filename_completed = 'todo_completed.csv'
@@ -26,7 +36,6 @@ pat_cmds = re.compile(r"(\-\-?[a-zA-Z0-9\-]+\s?[^\-]*)")
 pat_sepcmd = re.compile(r"(\-\-?)([a-zA-Z0-9\-]+)\s?([^\-]*)")
 pat_tl = re.compile(r"^@([^@\s\-]+)")
 pat_tg = re.compile(r"^\+([^\+\s\-]+)")
-m = pat_cmds.findall(args)
 
 _TIME = 0 #global time var for storing time tracking delta
 
@@ -34,7 +43,7 @@ user_path = os.path.expanduser('~')
 config_path = os.path.join(user_path, '.todo')
 config_cfg = os.path.join(config_path, 'config.cfg')
 
-
+# Recursive ask to set the directory untill the the pathe xists
 def _bother(default):
     npath = raw_input('Enter directory to store data files (default='+default+'):').strip()
     try:
@@ -45,6 +54,7 @@ def _bother(default):
     
     return npath
 
+# Reads an INI file and returns a ConfigParser object that can be iterated
 def _readconf(file_path):
     conf = ConfigParser.RawConfigParser()
     
@@ -61,6 +71,7 @@ def _readconf(file_path):
     
     return conf
 
+# Sets a value of a INI ConfigParser object by a given section and key
 def _setconf(conf, section, key, value):
     if not conf.has_section(section):
         conf.add_section(section)
@@ -68,6 +79,7 @@ def _setconf(conf, section, key, value):
     
     return conf
 
+# Writes INI ConfigParser object to a file
 def _writeconf(file_path, conf):
     try:
         f = open(file_path, 'wb')
@@ -107,27 +119,30 @@ If you wish you can enter a directory where you would like to save the CSV todo 
     _writeconf(config_cfg, conf)
     
     print '''
-Thanks, you are a real pal!
+Thanks, you're a real pal!
 
     
         ,d88b.d88b,
         88888888888
         `Y8888888Y'
           `Y888Y'  
-            `Y'  
-    '''
+            `Y'
+'''
     
 filename = os.path.join(conf.get('general', 'dir'), filename)
 tmp_filename = os.path.join(conf.get('general', 'dir'), tmp_filename)
 filename_completed = os.path.join(conf.get('general', 'dir'), filename_completed)
 tmp_filename_completed = os.path.join(conf.get('general', 'dir'), tmp_filename_completed)
-        
-#updated print
+
+
+# updated print, used when outputing spent time on a task
 def _uprint(new):
     CURSOR_UP_ONE = '\x1b[1A'
     ERASE_LINE = '\x1b[2K'
     print(CURSOR_UP_ONE + ERASE_LINE + str(new))
-    
+
+
+# gets the current task number, if the value past is string "last" then it is the length of the CSV rows
 def _parsenum(num, mod=None):
     num = num.split(',')
     for i in range(0, len(num)):
@@ -139,6 +154,8 @@ def _parsenum(num, mod=None):
         
     return num
 
+
+# Sets a value to a CSV file
 def _set(num, field, value, value_array = True):
     csv_in = open(filename)
     csv_out =  open(tmp_filename, 'w')
@@ -147,6 +164,10 @@ def _set(num, field, value, value_array = True):
     
     writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
     writer.writeheader()
+    
+    if not isinstance(num, list):
+        num = [int(num)-1]
+        value = [value]
     
     for i in range(0, len(num)):
         try:
@@ -164,12 +185,18 @@ def _set(num, field, value, value_array = True):
     csv_in.close
     csv_out.close
     os.rename(tmp_filename, filename)
-    
+
+# Gets a value from a csv file
 def _get(num, field=None):
     csv_in = open(filename)
     reader = csv.DictReader(csv_in)
     reader = list(reader)
     
+    one_result = False
+    if not isinstance(num, list):
+        num = [int(num)-1]
+        one_result = True
+        
     result = []
     
     for i in range(0, len(num)):
@@ -183,8 +210,12 @@ def _get(num, field=None):
     
     csv_in.close
     
-    return result
+    if one_result:
+        return result[0]
     
+    return result
+
+# transforms CSV list value into a py list
 def _csvlist(string):
     pat_inside = re.compile(r"^\[\'(.*)\'\]$")
     r = pat_inside.search(string)
@@ -192,6 +223,7 @@ def _csvlist(string):
         return None
     return re.split(r"\',\s?\'", r.group(1))
 
+# executes a command from a dictionary of commands
 def _execute(command, args=None):
     if command in fn:
         fn[command](value)
@@ -207,16 +239,87 @@ def _savetime():
         
 atexit.register(_savetime)
 
+# display all tags and number of tasks, number of important tasks, number of due soon tasks
+def display_tags(args=None):
+    csv_in = open(filename)
+    reader = csv.DictReader(csv_in)
+    res = {}
+    for row in reader:
+        tags = _csvlist(row['tags'])
+        if tags:
+            for t in tags:
+                if t in res:
+                    r = res[t]
+                    r['count'] += 1
+                    if row['important']:
+                        r['important'] += 1
+                    if row['due']:
+                        r['due'] += 1
+                else:
+                    res[t] = {
+                        'count': 1,
+                        'important':  1 if row['important'] else 0,
+                        'due': 1 if row['due'] else 0,
+                    }
+            
+    for r in res:
+        name = r;
+        r = res[r];
+        print '+'+name+' ('+str(r['count'])+')      important: '+str(r['important'])+', due: '+str(r['due']);
+
+# display all tasklists and number of tasks, number of important tasks, number of due soon tasks
+def display_tasklists(args=None):
+    csv_in = open(filename)
+    reader = csv.DictReader(csv_in)
+    res = {}
+    for row in reader:
+        if row['tasklist'] in res:
+            r = res[row['tasklist']]
+            r['count'] += 1
+            if row['important']:
+                r['important'] += 1
+            if row['due']:
+                r['due'] += 1
+        else:
+            res[row['tasklist']] = {
+                'count': 1,
+                'important':  1 if row['important'] else 0,
+                'due': 1 if row['due'] else 0,
+            }
+            
+    for r in res:
+        name = r;
+        r = res[r];
+        print '@'+name+' ('+str(r['count'])+')      important: '+str(r['important'])+', due: '+str(r['due']);
+
+
+# display all tasks in a tasklist
 def display_tasklist(tasklist):
     csv_in = open(filename)
     reader = csv.DictReader(csv_in)
     count = 1
+    
     for row in reader:
         if tasklist == row['tasklist']:
             print str(count) + '  ' +row['task']
         count += 1
     csv_in.close
 
+# display all tasks in a tasklist
+def display_tag(tag):
+    csv_in = open(filename)
+    reader = csv.DictReader(csv_in)
+    count = 1
+    
+    for row in reader:
+        tags = _csvlist(row['tags'])
+        if tags:
+            for t in tags:
+                if tag == t:
+                    print str(count) + '  ' +row['task']
+        count += 1
+        
+    csv_in.close
 
 def display(args=None):
     if args:
@@ -224,7 +327,10 @@ def display(args=None):
         tl = pat_tl.search(args)
         if tl:
             display_tasklist(tl.group(1))
-    
+            
+        tg = pat_tg.search(args)
+        if tg:
+            display_tag(tg.group(1))
     else:
         csv_in = open(filename)
         reader = csv.DictReader(csv_in)
@@ -234,6 +340,7 @@ def display(args=None):
             count += 1
         csv_in.close
 
+# deletes a task
 def delete(num):
     csv_in = open(filename)
     csv_out =  open(tmp_filename, 'w')
@@ -261,10 +368,12 @@ def delete(num):
     csv_out.close
     os.rename(tmp_filename, filename)
 
-def complete(arg): #on completion a task is moved to the other file todo_complete.csv where it's stored for later mining
+# on completion a task is moved to the other file todo_complete.csv where it's stored for later mining
+def complete(arg):
     pass
 
-def track(num): #task time tracking
+#task time tracking
+def track(num):
     #TODO: log of times per day / statistics
     global _TIME
     _TIME = _get(num, 'time_spent')
@@ -276,6 +385,7 @@ def track(num): #task time tracking
     def timed_output(st, delay):
         while True:
             d = timedelta(seconds=time.time() - st)
+            d = re.sub(r"\.[0-9]+", '', str(d))
             _uprint(d)
             time.sleep(delay)
             
@@ -297,13 +407,32 @@ def track(num): #task time tracking
 def addtime(): #add hours to hours spent
     pass
 
-def rmtime(): #remove hours to hours spent
+def settime(): #replaces time spent with user given value
     pass
 
-def due(): #set due of the task, keywords like today, tomorrow, day after tomorrow, next week, two days, two weeks, someday
-    pass
+#set due of the task, for now only true and false
+def due(num):
+    #TODO: today, tomorrow, two weeks, two days, someday
+    num = _parsenum(num, -1)
+    
+    res = _get(num, 'due')
+    
+    for i in range(0, len(num)):
+        if res[i] is '':
+            res[i] = 0
+        else:
+            res[i] = int(res[i])
+        if res[i] is 0:
+            res[i] +=1
+            print 'Task {0} set to due soon'.format(num[i]+1) 
+        else:
+            res[i] -=1
+            print 'Task {0} set to due later'.format(num[i]+1) 
+        
+    _set(num, 'due', res)
 
-def important(num): #task importance toggle
+#task importance toggle
+def important(num): 
     num = _parsenum(num, -1)
     
     res = _get(num, 'important')
@@ -322,8 +451,8 @@ def important(num): #task importance toggle
         
     _set(num, 'important', res)
 
-def tasklist(args): #asigns a task to a task list / project
-    #TODO multiple task asigns
+#asigns a task to a task list / project
+def tasklist(args):
     pts = args.split(' ', 2)
     if len(pts) < 1:
         print 'Error: tasklist option requires 2 parameters, first the task id/ids, second tasklist name'
@@ -336,7 +465,8 @@ def tasklist(args): #asigns a task to a task list / project
     num = _parsenum(pts[0])
     _set(num, 'tasklist', pts[1], False)
 
-def tag(args): #assigns tags to the task, add tags to a task list, remove the tags, etc..
+#assigns tags to the task, add tags to a task list, remove the tags, etc..
+def tag(args):
     pts = args.split(' ', 1)
     
     if len(pts) < 2:
@@ -362,7 +492,8 @@ def tag(args): #assigns tags to the task, add tags to a task list, remove the ta
             result.append(ntags)
     
     _set(num, 'tags', result)
-    
+ 
+# removes given tags separated by space beginning with +   
 def rmtag(args):
     pts = args.split(' ', 1)
     
@@ -390,14 +521,16 @@ def rmtag(args):
     
     _set(num, 'tags', result)
 
-
-def imprt(): #imports a CSV
+# imports a CSV
+def imprt(): 
     #maybe parses your code for TODO: comments displays line number in task text
     pass
 
-def edit(): #edits task by a given id, asks user to dubmit the new title
+# edits task by a given id, asks user to dubmit the new title
+def edit():
     pass
 
+# adds a new task
 def new(args):
     new_task = {'created': time.time(),
                 'important': 0,
@@ -449,6 +582,7 @@ def new(args):
         csv_out.close
         os.rename(tmp_filename, filename)
 
+# prints a help text
 def help(args=None):
     print '''
 TODO v{ver} - CLI task manager with time tracking
@@ -472,12 +606,15 @@ Usage:  todo ...TITLE...[@TASKLIST][+TAG]
     -T, --tasklist  ID[,ID] [TASKLIST]  adds tasks to a tasklist
     --tag           ID[,ID] TAG[ TAG]   adds tags to tasks
     --rmtag         ID[,ID] TAG[ TAG]   removes existing tags from tasks
+    --tasklists                         lists all tasklists
+    --tags                              lists all tags
     -h, --help                          displays this help
 '''.format(ver=version)
 
 #TODO: Verson -v
 #TODO: uninstall
 #TODO: update
+# Connects commands with real functions
 fn = {
     'd': delete,
     'delete': delete,
@@ -494,9 +631,13 @@ fn = {
     'tag': tag,
     'rmtag': rmtag,
     'h': help,
-    'help': help
+    'help': help,
+    'tasklists': display_tasklists,
+    'tags': display_tags
 }
 
+# parse commands passed as arguments
+m = pat_cmds.findall(args)
 
 if m:
     #execute commands
