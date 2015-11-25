@@ -5,27 +5,353 @@
     by Stamat <stamatmail@gmail.com>
 '''
 
-import sys, os, re, time
+import sys, os, re, time, string
 from datetime import datetime, date, timedelta
 import threading, atexit
 import csv, ConfigParser
+
+
+# TEXTTABLE 0.8.4 by Gerome Fournier https://github.com/foutaise/texttable/
+##########################################################################
+# imported like this to preserve TODO in one file and independent
+
+try:
+    if sys.version >= '2.3':
+        import textwrap
+    elif sys.version >= '2.2':
+        from optparse import textwrap
+    else:
+        from optik import textwrap
+except ImportError:
+    sys.stderr.write("Can't import textwrap module!\n")
+    raise
+
+if sys.version >= '2.7':
+    from functools import reduce
+
+def len(iterable):
+    """Redefining len here so it will be able to work with non-ASCII characters
+    """
+    if not isinstance(iterable, str):
+        return iterable.__len__()
+    
+    try:
+        if sys.version >= '3.0':
+            return len(str)
+        else:
+            return len(unicode(iterable, 'utf'))
+    except:
+        return iterable.__len__()
+
+class ArraySizeError(Exception):
+    def __init__(self, msg):
+        self.msg = msg
+        Exception.__init__(self, msg, '')
+
+    def __str__(self):
+        return self.msg
+
+class Texttable:
+
+    BORDER = 1
+    HEADER = 1 << 1
+    HLINES = 1 << 2
+    VLINES = 1 << 3
+
+    def __init__(self, max_width=80):
+        if max_width <= 0:
+            max_width = False
+        self._max_width = max_width
+        self._precision = 3
+
+        self._deco = Texttable.VLINES | Texttable.HLINES | Texttable.BORDER | \
+            Texttable.HEADER
+        self.set_chars(['-', '|', '+', '='])
+        self.reset()
+
+    def reset(self):
+        self._hline_string = None
+        self._row_size = None
+        self._header = []
+        self._rows = []
+
+    def set_chars(self, array):
+        if len(array) != 4:
+            raise ArraySizeError("array should contain 4 characters")
+        array = [ x[:1] for x in [ str(s) for s in array ] ]
+        (self._char_horiz, self._char_vert,
+            self._char_corner, self._char_header) = array
+
+    def set_deco(self, deco):
+        self._deco = deco
+
+    def set_cols_align(self, array):
+        self._check_row_size(array)
+        self._align = array
+
+    def set_cols_valign(self, array):
+
+        self._check_row_size(array)
+        self._valign = array
+
+    def set_cols_dtype(self, array):
+        self._check_row_size(array)
+        self._dtype = array
+
+    def set_cols_width(self, array):
+        self._check_row_size(array)
+        try:
+            array = list(map(int, array))
+            if reduce(min, array) <= 0:
+                raise ValueError
+        except ValueError:
+            sys.stderr.write("Wrong argument in column width specification\n")
+            raise
+        self._width = array
+
+    def set_precision(self, width):
+        if not type(width) is int or width < 0:
+            raise ValueError('width must be an integer greater then 0')
+        self._precision = width
+
+    def header(self, array):
+        self._check_row_size(array)
+        self._header = list(map(str, array))
+
+    def add_row(self, array):
+        self._check_row_size(array)
+
+        if not hasattr(self, "_dtype"):
+            self._dtype = ["a"] * self._row_size
+            
+        cells = []
+        for i, x in enumerate(array):
+            cells.append(self._str(i, x))
+        self._rows.append(cells)
+
+    def add_rows(self, rows, header=True):
+        if header:
+            if hasattr(rows, '__iter__') and hasattr(rows, 'next'):
+                self.header(rows.next())
+            else:
+                self.header(rows[0])
+                rows = rows[1:]
+        for row in rows:
+            self.add_row(row)
+
+    def draw(self):
+        if not self._header and not self._rows:
+            return
+        self._compute_cols_width()
+        self._check_align()
+        out = ""
+        if self._has_border():
+            out += self._hline()
+        if self._header:
+            out += self._draw_line(self._header, isheader=True)
+            if self._has_header():
+                out += self._hline_header()
+        length = 0
+        for row in self._rows:
+            length += 1
+            out += self._draw_line(row)
+            if self._has_hlines() and length < len(self._rows):
+                out += self._hline()
+        if self._has_border():
+            out += self._hline()
+        return out[:-1]
+
+    def _str(self, i, x):
+        try:
+            f = float(x)
+        except:
+            return str(x)
+
+        n = self._precision
+        dtype = self._dtype[i]
+
+        if dtype == 'i':
+            return str(int(round(f)))
+        elif dtype == 'f':
+            return '%.*f' % (n, f)
+        elif dtype == 'e':
+            return '%.*e' % (n, f)
+        elif dtype == 't':
+            return str(x)
+        else:
+            if f - round(f) == 0:
+                if abs(f) > 1e8:
+                    return '%.*e' % (n, f)
+                else:
+                    return str(int(round(f)))
+            else:
+                if abs(f) > 1e8:
+                    return '%.*e' % (n, f)
+                else:
+                    return '%.*f' % (n, f)
+
+    def _check_row_size(self, array):
+        if not self._row_size:
+            self._row_size = len(array)
+        elif self._row_size != len(array):
+            raise ArraySizeError("array should contain %d elements" \
+                % self._row_size)
+
+    def _has_vlines(self):
+        return self._deco & Texttable.VLINES > 0
+
+    def _has_hlines(self):
+        return self._deco & Texttable.HLINES > 0
+
+    def _has_border(self):
+        return self._deco & Texttable.BORDER > 0
+
+    def _has_header(self):
+        return self._deco & Texttable.HEADER > 0
+
+    def _hline_header(self):
+        return self._build_hline(True)
+
+    def _hline(self):
+        if not self._hline_string:
+            self._hline_string = self._build_hline()
+        return self._hline_string
+
+    def _build_hline(self, is_header=False):
+        horiz = self._char_horiz
+        if (is_header):
+            horiz = self._char_header
+        # compute cell separator
+        s = "%s%s%s" % (horiz, [horiz, self._char_corner][self._has_vlines()],
+            horiz)
+        # build the line
+        l = s.join([horiz * n for n in self._width])
+        # add border if needed
+        if self._has_border():
+            l = "%s%s%s%s%s\n" % (self._char_corner, horiz, l, horiz,
+                self._char_corner)
+        else:
+            l += "\n"
+        return l
+
+    def _len_cell(self, cell):
+        cell_lines = cell.split('\n')
+        maxi = 0
+        for line in cell_lines:
+            length = 0
+            parts = line.split('\t')
+            for part, i in zip(parts, list(range(1, len(parts) + 1))):
+                length = length + len(part)
+                if i < len(parts):
+                    length = (length//8 + 1) * 8
+            maxi = max(maxi, length)
+        return maxi
+
+    def _compute_cols_width(self):
+        if hasattr(self, "_width"):
+            return
+        maxi = []
+        if self._header:
+            maxi = [ self._len_cell(x) for x in self._header ]
+        for row in self._rows:
+            for cell,i in zip(row, list(range(len(row)))):
+                try:
+                    maxi[i] = max(maxi[i], self._len_cell(cell))
+                except (TypeError, IndexError):
+                    maxi.append(self._len_cell(cell))
+        items = len(maxi)
+        length = reduce(lambda x, y: x+y, maxi)
+        if self._max_width and length + items * 3 + 1 > self._max_width:
+            maxi = [(self._max_width - items * 3 -1) // items \
+                    for n in range(items)]
+        self._width = maxi
+
+    def _check_align(self):
+        if not hasattr(self, "_align"):
+            self._align = ["l"] * self._row_size
+        if not hasattr(self, "_valign"):
+            self._valign = ["t"] * self._row_size
+
+    def _draw_line(self, line, isheader=False):
+        line = self._splitit(line, isheader)
+        space = " "
+        out = ""
+        for i in range(len(line[0])):
+            if self._has_border():
+                out += "%s " % self._char_vert
+            length = 0
+            for cell, width, align in zip(line, self._width, self._align):
+                length += 1
+                cell_line = cell[i]
+                fill = width - len(cell_line)
+                if isheader:
+                    align = "c"
+                if align == "r":
+                    out += "%s " % (fill * space + cell_line)
+                elif align == "c":
+                    out += "%s " % (int(fill/2) * space + cell_line \
+                            + int(fill/2 + fill%2) * space)
+                else:
+                    out += "%s " % (cell_line + fill * space)
+                if length < len(line):
+                    out += "%s " % [space, self._char_vert][self._has_vlines()]
+            out += "%s\n" % ['', self._char_vert][self._has_border()]
+        return out
+
+    def _splitit(self, line, isheader):
+        line_wrapped = []
+        for cell, width in zip(line, self._width):
+            array = []
+            for c in cell.split('\n'):
+                try:
+                    if sys.version >= '3.0':
+                        c = str(c)
+                    else:
+                        c = unicode(c, 'utf')
+                except UnicodeDecodeError as strerror:
+                    sys.stderr.write("UnicodeDecodeError exception for string '%s': %s\n" % (c, strerror))
+                    if sys.version >= '3.0':
+                        c = str(c, 'utf', 'replace')
+                    else:
+                        c = unicode(c, 'utf', 'replace')
+                array.extend(textwrap.wrap(c, width))
+            line_wrapped.append(array)
+        max_cell_lines = reduce(max, list(map(len, line_wrapped)))
+        for cell, valign in zip(line_wrapped, self._valign):
+            if isheader:
+                valign = "t"
+            if valign == "m":
+                missing = max_cell_lines - len(cell)
+                cell[:0] = [""] * int(missing / 2)
+                cell.extend([""] * int(missing / 2 + missing % 2))
+            elif valign == "b":
+                cell[:0] = [""] * (max_cell_lines - len(cell))
+            else:
+                cell.extend([""] * (max_cell_lines - len(cell)))
+        return line_wrapped
+
+
+
+
+
+#TODO
+#############################################################################################
 
 args = sys.argv
 args.pop(0)
 args = ' '.join(args)
 
-version = '1.0'
+version = '1.0.1'
 
 #TODO: Display function displays a header with data: important count, unimportant count, due soon count, due later count
-#TODO: function that lists all task lists
-#TODO: function that lists all tags
-#TODO: COMPLEX DISPLAY QUERY, display due soon, important, by a tasklist and tags
+#TODO: display tasks by important, by due soon, by important-duesoon, by important-due later, by nonimportant...
 #TODO: add UID for tasks for server synchronisation, should be creation timestamp in combination with autoincrement ID, to prevent multidevice sync confusion
 #synchronisation should happen by last modified has priority
 #completed tasks has a special additional file for synchronisation newly finished tasks after last synchronisation, server appends to completed.csv on serverside. THINK ABOUT THIS, IT WILL BE A HUGE FILE.
 #TODO: time spent statistics in a file. THINK ABOUT THIS
 #TODO: shorten timestamps to seconds only to save the storage space, except creation timestamp. WARCH THE TIMEZONES! REDUCE ALL TIMES TO GMT +0 to avoid server confusion
 #TODO: droplets gui for this TODO
+
 fieldnames = ['task', 'created', 'important', 'due', 'time_spent', 'tasklist', 'tags', 'last_modified']
 filename = 'todo.csv'
 tmp_filename = 'tmp_todo.csv'
@@ -239,6 +565,10 @@ def _savetime():
         
 atexit.register(_savetime)
 
+def _deltatime(string):
+    time = timedelta(0, float(string))
+    return re.sub(r"\.[0-9]+", '', str(time))
+
 # display all tags and number of tasks, number of important tasks, number of due soon tasks
 def display_tags(args=None):
     csv_in = open(filename)
@@ -251,22 +581,36 @@ def display_tags(args=None):
                 if t in res:
                     r = res[t]
                     r['count'] += 1
-                    if row['important']:
+                    if int(row['important']):
                         r['important'] += 1
-                    if row['due']:
+                    if int(row['due']):
                         r['due'] += 1
+                    if row['time_spent'] and row['time_spent'] != '':
+                        r['time'] += float(row['time_spent'])
                 else:
                     res[t] = {
                         'count': 1,
-                        'important':  1 if row['important'] else 0,
-                        'due': 1 if row['due'] else 0,
+                        'important':  1 if int(row['important']) else 0,
+                        'due': 1 if int(row['due']) else 0,
+                        'time': float(row['time_spent'])
                     }
             
+    table = Texttable()
+    table.header(['task list', 'tasks', 'important', 'due soon', 'time'])
+    table.set_chars([' ',' ',' ','-'])
+    table.set_deco(table.HEADER | table.VLINES)
+        
     for r in res:
         name = r;
         r = res[r];
-        print '+'+name+' ('+str(r['count'])+')      important: '+str(r['important'])+', due: '+str(r['due']);
+        table.add_row([name, r['count'], r['important'], r['due'], _deltatime(r['time'])])
+        #print '@'+name+' ('+str(r['count'])+')      important: '+str(r['important'])+', due: '+str(r['due']);
+    
+    print
+    print table.draw()
+    print
 
+    
 # display all tasklists and number of tasks, number of important tasks, number of due soon tasks
 def display_tasklists(args=None):
     csv_in = open(filename)
@@ -276,39 +620,60 @@ def display_tasklists(args=None):
         if row['tasklist'] in res:
             r = res[row['tasklist']]
             r['count'] += 1
-            if row['important']:
+            if int(row['important']):
                 r['important'] += 1
-            if row['due']:
+            if int(row['due']):
                 r['due'] += 1
+            if row['time_spent'] and row['time_spent'] != '':
+                r['time'] += float(row['time_spent'])
         else:
             res[row['tasklist']] = {
                 'count': 1,
-                'important':  1 if row['important'] else 0,
-                'due': 1 if row['due'] else 0,
+                'important':  1 if int(row['important']) else 0,
+                'due': 1 if int(row['due']) else 0,
+                'time': float(row['time_spent'])
             }
-            
+    
+    table = Texttable()
+    table.header(['task list', 'tasks', 'important', 'due soon', 'time'])
+    table.set_chars([' ',' ',' ','-'])
+    table.set_deco(table.HEADER | table.VLINES)
+        
     for r in res:
         name = r;
         r = res[r];
-        print '@'+name+' ('+str(r['count'])+')      important: '+str(r['important'])+', due: '+str(r['due']);
+        table.add_row([name, r['count'], r['important'], r['due'], _deltatime(r['time'])])
+        #print '@'+name+' ('+str(r['count'])+')      important: '+str(r['important'])+', due: '+str(r['due']);
+    
+    print
+    print table.draw()
+    print
 
+def _print(num, row, details=False):
+    if not details:
+        print str(num) + '  ' +row['task']
+    else:
+        tags = _csvlist(row['tags'])
+        if tags: 
+            tags = ', '.join(tags)
+        else:
+            tags = ''
+        time = _deltatime(row['time_spent'])
+        details.add_row([num, row['task'], 'o' if int(row['important']) else '', 'o' if int(row['due']) else '', row['tasklist'], tags, time]);
+        #print str(num) + '  ' +row['task'] + '\t\t@'+row['tasklist']+tags
 
 # display all tasks in a tasklist
-def display_tasklist(tasklist):
-    csv_in = open(filename)
-    reader = csv.DictReader(csv_in)
+def display_tasklist(tasklist, reader, details=False):
     count = 1
     
     for row in reader:
         if tasklist == row['tasklist']:
-            print str(count) + '  ' +row['task']
+            _print(count, row, details)
         count += 1
-    csv_in.close
+
 
 # display all tasks in a tasklist
-def display_tag(tag):
-    csv_in = open(filename)
-    reader = csv.DictReader(csv_in)
+def display_tag(tag, reader, details=False):
     count = 1
     
     for row in reader:
@@ -316,29 +681,51 @@ def display_tag(tag):
         if tags:
             for t in tags:
                 if tag == t:
-                    print str(count) + '  ' +row['task']
+                    _print(count, row, details)
         count += 1
         
-    csv_in.close
 
-def display(args=None):
+def display(args=None, details=False):
+    csv_in = open(filename)
+    reader = csv.DictReader(csv_in)
+    
+    if details:
+        details = Texttable()
+        details.header(['id', 'task', '!', '*', 'task list', 'tags', 'time'])
+        
+        #TODO  = important | due soon
     if args:
         args = args.strip()
         tl = pat_tl.search(args)
         if tl:
-            display_tasklist(tl.group(1))
+            display_tasklist(tl.group(1), reader, details)
             
         tg = pat_tg.search(args)
         if tg:
-            display_tag(tg.group(1))
+            display_tag(tg.group(1), reader, details)
     else:
-        csv_in = open(filename)
-        reader = csv.DictReader(csv_in)
+        print
         count = 1
         for row in reader:
-            print str(count) + '  ' +row['task']
+            _print(count, row, details)
             count += 1
-        csv_in.close
+        print
+        
+    if details:
+        details.set_cols_width([3, 30, 1, 1, 10, 8, 8])
+        details.set_deco(details.HEADER | details.VLINES)
+        details.set_chars([' ',' ',' ','-'])
+        s = details.draw()
+        print
+        print s
+        print
+    
+    csv_in.close
+
+
+def display_detailed(args=None):
+    display(args, True);
+
 
 # deletes a task
 def delete(num):
@@ -368,9 +755,11 @@ def delete(num):
     csv_out.close
     os.rename(tmp_filename, filename)
 
+
 # on completion a task is moved to the other file todo_complete.csv where it's stored for later mining
 def complete(arg):
     pass
+
 
 #task time tracking
 def track(num):
@@ -384,9 +773,7 @@ def track(num):
         
     def timed_output(st, delay):
         while True:
-            d = timedelta(seconds=time.time() - st)
-            d = re.sub(r"\.[0-9]+", '', str(d))
-            _uprint(d)
+            _uprint(_deltatime(time.time() - st))
             time.sleep(delay)
             
     delay = 1
@@ -431,6 +818,7 @@ def due(num):
         
     _set(num, 'due', res)
 
+
 #task importance toggle
 def important(num): 
     num = _parsenum(num, -1)
@@ -451,6 +839,7 @@ def important(num):
         
     _set(num, 'important', res)
 
+
 #asigns a task to a task list / project
 def tasklist(args):
     pts = args.split(' ', 2)
@@ -464,6 +853,7 @@ def tasklist(args):
         
     num = _parsenum(pts[0])
     _set(num, 'tasklist', pts[1], False)
+
 
 #assigns tags to the task, add tags to a task list, remove the tags, etc..
 def tag(args):
@@ -520,6 +910,7 @@ def rmtag(args):
             result.append('')
     
     _set(num, 'tags', result)
+    
 
 # imports a CSV
 def imprt(): 
@@ -534,7 +925,7 @@ def edit():
 def new(args):
     new_task = {'created': time.time(),
                 'important': 0,
-                'due': 'someday'}
+                'due': 0}
     
     #check task for @tasklist #tag #tag
     pat_all_tl = re.compile(r"^@[^@\s\-]+\s?|\s@[^@\s\-]+\s?")
@@ -582,6 +973,7 @@ def new(args):
         csv_out.close
         os.rename(tmp_filename, filename)
 
+
 # prints a help text
 def help(args=None):
     print '''
@@ -599,10 +991,12 @@ Usage:  todo ...TITLE...[@TASKLIST][+TAG]
         
         
     -l, --list      [TASKLIST [TAG]]    lists all tasks, or all task within a list or with a tag
-    -d, --delete    ID[,ID]             deletes a task by a given task ID
+    -a, --details   [TASKLIST [TAG]]    lists all tasks with details
+    -r, --remove    ID[,ID]             removes a task by a given task ID
     -c, --complete  ID[,ID]             completes a task by a given ID
     -t, --track     ID                  time track single task, exit keyboard interupt
     -i, --important ID[,ID]             toggles the important state
+    -d, --due       ID[,ID]             toggles the due state (soon / later)
     -T, --tasklist  ID[,ID] [TASKLIST]  adds tasks to a tasklist
     --tag           ID[,ID] TAG[ TAG]   adds tags to tasks
     --rmtag         ID[,ID] TAG[ TAG]   removes existing tags from tasks
@@ -616,8 +1010,10 @@ Usage:  todo ...TITLE...[@TASKLIST][+TAG]
 #TODO: update
 # Connects commands with real functions
 fn = {
-    'd': delete,
-    'delete': delete,
+    'r': delete,
+    'remove': delete,
+    'd': due,
+    'due': due,
     'c': complete,
     'complete': complete,
     'l': display,
@@ -633,7 +1029,9 @@ fn = {
     'h': help,
     'help': help,
     'tasklists': display_tasklists,
-    'tags': display_tags
+    'tags': display_tags,
+    'a': display_detailed,
+    'details': display_detailed
 }
 
 # parse commands passed as arguments
