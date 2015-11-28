@@ -343,7 +343,7 @@ args = ' '.join(args)
 
 version = '1.0.1'
 
-#TODO: Display function displays a header with data: important count, unimportant count, due soon count, due later count
+#TODO: Display function displays a header with data: important count, unimportant count, due soon count, due later count, sum of time spent
 #TODO: display tasks by important, by due soon, by important-duesoon, by important-due later, by nonimportant...
 #TODO: add UID for tasks for server synchronisation, should be creation timestamp in combination with autoincrement ID, to prevent multidevice sync confusion
 #synchronisation should happen by last modified has priority
@@ -596,7 +596,7 @@ def display_tags(args=None):
                     }
             
     table = Texttable()
-    table.header(['task list', 'tasks', 'important', 'due soon', 'time'])
+    table.header(['tag', 'tasks', 'important', 'due soon', 'time'])
     table.set_chars([' ',' ',' ','-'])
     table.set_deco(table.HEADER | table.VLINES)
         
@@ -635,7 +635,7 @@ def display_tasklists(args=None):
             }
     
     table = Texttable()
-    table.header(['task list', 'tasks', 'important', 'due soon', 'time'])
+    table.header(['list', 'tasks', 'important', 'due soon', 'time'])
     table.set_chars([' ',' ',' ','-'])
     table.set_deco(table.HEADER | table.VLINES)
         
@@ -664,16 +664,22 @@ def _print(num, row, details=False):
 
 # display all tasks in a tasklist
 def display_tasklist(tasklist, reader, details=False):
+    if not details:
+        print
     count = 1
     
     for row in reader:
         if tasklist == row['tasklist']:
             _print(count, row, details)
         count += 1
-
+        
+    if not details:
+        print
 
 # display all tasks in a tasklist
 def display_tag(tag, reader, details=False):
+    if not details:
+        print
     count = 1
     
     for row in reader:
@@ -684,6 +690,41 @@ def display_tag(tag, reader, details=False):
                     _print(count, row, details)
         count += 1
         
+    if not details:
+        print
+
+#TODO: gets tasks by importance and due now
+def quadrant(imp, due, reader, details=False):
+    if not details:
+        print
+    count = 1
+    
+    def validateDue(row):
+        a = int(row['due'] if row['due'] else 0)
+        b = 1 if due else 0
+        return a == b
+    
+    def validateImp(row):
+        a = int(row['important'] if row['important'] else 0)
+        b = 1 if imp else 0
+        return a == b
+    
+    def validateBoth(row):
+        return validateDue(row) and validateImp(row)
+    
+    validate = validateBoth
+    if imp is None:
+        validate = validateDue
+    if due is None:
+        validate = validateImp
+
+    for row in reader:
+        if validate(row):
+            _print(count, row, details)
+        count += 1
+        
+    if not details:
+        print
 
 def display(args=None, details=False):
     csv_in = open(filename)
@@ -694,7 +735,11 @@ def display(args=None, details=False):
         details.header(['id', 'task', '!', '*', 'task list', 'tags', 'time'])
         
         #TODO  = important | due soon
+    regular = True
+    
     if args:
+        
+        regular = False
         args = args.strip()
         tl = pat_tl.search(args)
         if tl:
@@ -703,7 +748,39 @@ def display(args=None, details=False):
         tg = pat_tg.search(args)
         if tg:
             display_tag(tg.group(1), reader, details)
-    else:
+        
+        imp = None
+        due = None
+        
+        pts = args.split(' ')
+        
+        def check(string, list1, list2):
+            if string in list1:
+                return True
+            if string in list2:
+                return False
+            return None
+        
+        if len(pts) is 0:
+            regular = True
+        else: 
+            imp = check(pts[0], ['i', 'important'], ['u', 'unimportant'])
+            if imp is None:
+                due = check(pts[0], ['n', 'now'], ['l', 'later'])
+            
+            if len(pts) is 2:
+                if imp is None:
+                    imp = check(pts[1], ['i', 'important'], ['u', 'unimportant'])
+                if due is None:
+                    due = check(pts[1], ['n', 'now'], ['l', 'later'])
+        
+        if imp is None and due is None:
+            regular = True
+        else:
+            quadrant(imp, due, reader, details)
+    #TODO: important|unimportant now|later
+        
+    if regular:
         print
         count = 1
         for row in reader:
@@ -715,9 +792,9 @@ def display(args=None, details=False):
         details.set_cols_width([3, 30, 1, 1, 10, 8, 8])
         details.set_deco(details.HEADER | details.VLINES)
         details.set_chars([' ',' ',' ','-'])
-        s = details.draw()
+
         print
-        print s
+        print details.draw()
         print
     
     csv_in.close
@@ -1000,7 +1077,7 @@ Usage:  todo ...TITLE...[@TASKLIST][+TAG]
     -T, --tasklist  ID[,ID] [TASKLIST]  adds tasks to a tasklist
     --tag           ID[,ID] TAG[ TAG]   adds tags to tasks
     --rmtag         ID[,ID] TAG[ TAG]   removes existing tags from tasks
-    --tasklists                         lists all tasklists
+    --lists                             lists all task lists
     --tags                              lists all tags
     -h, --help                          displays this help
 '''.format(ver=version)
