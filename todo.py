@@ -813,7 +813,7 @@ def new(args):
 # prints a help text
 def help(args=None):
     print '''
-TODO v{ver} - CLI task manager with time tracking
+TODO - CLI task manager with time tracking
 <http://todotron.com>
 
 Usage:  todo ...TITLE...[@TASKLIST][+TAG]
@@ -840,12 +840,15 @@ Usage:  todo ...TITLE...[@TASKLIST][+TAG]
     --lists                             lists all task lists
     --tags                              lists all tags
     -h, --help                          displays this help
-'''.format(ver=version)
+    -v, --version                       displays version
+'''
 
-#TODO: Verson -v
 #TODO: uninstall
 #TODO: update
 
+def ver(args=None):
+    print 'version: ' + version
+    
 # Connects commands with real functions
 fn = {
     'r': delete,
