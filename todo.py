@@ -15,7 +15,7 @@ try:
     import texttable
 except ImportError:
     try:
-        import lib.texttable
+        import lib.texttable as texttable
     except ImportError:
         texttable_available = False
 
@@ -258,9 +258,13 @@ def _savetime():
         
 atexit.register(_savetime)
 
+
 def _deltatime(string):
+    if type(string) is str and string.strip() == '':
+        return '0:00:00'
     time = timedelta(0, float(string))
     return re.sub(r"\.[0-9]+", '', str(time))
+
 
 # display all tags and number of tasks, number of important tasks, number of due soon tasks
 def display_tags(args=None):
