@@ -23,10 +23,9 @@ args = sys.argv
 args.pop(0)
 args = ' '.join(args)
 
-version = '1.0.1'
+version = '1.0.2'
 
-#TODO: Display function displays a header with data: important count, unimportant count, due soon count, due later count, sum of time spent
-#TODO: display tasks by important, by due soon, by important-duesoon, by important-due later, by nonimportant...
+#TODO: Preferences for argumentless display of tasks, default query
 #TODO: add UID for tasks for server synchronisation, should be creation timestamp in combination with autoincrement ID, to prevent multidevice sync confusion
 #synchronisation should happen by last modified has priority
 #completed tasks has a special additional file for synchronisation newly finished tasks after last synchronisation, server appends to completed.csv on serverside. THINK ABOUT THIS, IT WILL BE A HUGE FILE.
@@ -164,9 +163,20 @@ def _uprint(new):
 # gets the current task number, if the value past is string "last" then it is the length of the CSV rows
 def _parsenum(num, mod=None):
     num = num.split(',')
+    last = 1
+    
+    try:
+        reader
+    except NameError:
+        csv_in = open(filename)
+        reader = csv.DictReader(csv_in)
+        reader = list(reader)
+        last = len(reader);
+        csv_in.close
+        
     for i in range(0, len(num)):
         if num[i] == 'last':
-            num[i] = len(reader)
+            num[i] = last
         num[i] = int(num[i])
         if mod:
             num[i] += mod
@@ -326,7 +336,7 @@ def display_tasklists(args=None):
             r['count'] += 1
             if int(row['important']):
                 r['important'] += 1
-            if int(row['due']):
+            if _isDue(row['due']):
                 r['due'] += 1
             if row['time_spent'] and row['time_spent'] != '':
                 r['time'] += float(row['time_spent'])
@@ -362,6 +372,14 @@ def display_tasklists(args=None):
             print '@'+name+' \t\t[ count: '+str(r['count'])+', important: '+str(r['important'])+', due: '+str(r['due'])+' ]';
         print
         
+
+def _isDue(string):
+    if not string or string == '0' or string == 'later':
+        return False
+    
+    if string or string == '1' or string == 'soon':
+        return True
+    #TODO: compare due time with current time and by configuration treshold decide if it is soon or later
 
 def _print(num, row, details=False):
     if not details:
@@ -413,9 +431,7 @@ def quadrant(imp, due, reader, details=False):
     count = 1
     
     def validateDue(row):
-        a = int(row['due'] if row['due'] else 0)
-        b = 1 if due else 0
-        return a == b
+        return _isDue(row['due']) is due
     
     def validateImp(row):
         a = int(row['important'] if row['important'] else 0)
@@ -440,6 +456,7 @@ def quadrant(imp, due, reader, details=False):
         print
 
 def parseQuery(args=None):
+    print args
     pass
 
 def query(tasklist=None, tags=None, imp=None, due=None):
@@ -487,7 +504,7 @@ def display(args=None, details=False):
         else: 
             imp = check(pts[0], ['i', 'important'], ['u', 'unimportant'])
             if imp is None:
-                due = check(pts[0], ['n', 'now'], ['l', 'later'])
+                due = check(pts[0], ['s', 'soon'], ['l', 'later'])
             
             if len(pts) is 2:
                 if imp is None:
@@ -641,14 +658,14 @@ def important(num):
 def tasklist(args):
     pts = args.split(' ', 2)
     if len(pts) < 1:
-        print 'Error: tasklist option requires 2 parameters, first the task id/ids, second tasklist name'
+        _err('tasklist option requires 2 parameters, first the task id/ids, second tasklist name', 'invalid argument')
         return
     if len(pts) > 1:
         pts[1] = re.sub(r"@",'',pts[1])
     else:
         pts.insert(1, '')
         
-    num = _parsenum(pts[0])
+    num = _parsenum(pts[0], -1)
     _set(num, 'tasklist', pts[1], False)
 
 
@@ -657,7 +674,7 @@ def tag(args):
     pts = args.split(' ', 1)
     
     if len(pts) < 2:
-        print 'Error: tag option requires 2 parameters, first the task id, second tag names separated by space'
+        _err('tag option requires 2 parameters, first the task id, second tag names separated by space', 'invalid argument')
         return
     
     pts[1] = re.sub(r"\+",'',pts[1])
@@ -685,7 +702,7 @@ def rmtag(args):
     pts = args.split(' ', 1)
     
     if len(pts) < 2:
-        print 'Error: rmtag option requires 2 parameters, first the task id, second tag names separated by space'
+        _err('rmtag option requires 2 parameters, first the task id, second tag names separated by space','invalid argument')
         return
     
     pts[1] = re.sub(r"\+",'',pts[1])
@@ -714,8 +731,29 @@ def imprt():
     #maybe parses your code for TODO: comments displays line number in task text
     pass
 
+def _err(string, code=None):
+    code = ' ['+code+']' if code else ''
+    print 'Error{1}: {0}'.format(string, code)
+
 # edits task by a given id, asks user to dubmit the new title
-def edit():
+def edit(args):
+    if not args:
+        _err('You need to pass an ID of a task you would like to edit', 'invalid argument')
+        pass
+    pat_edit = re.compile(r"^([1-9]{1}[0-9]*|last)\s(.*)")
+    mo = pat_edit.match(args)
+    if mo:
+        num = _parsenum(mo.group(1), -1)
+        task = mo.group(2).strip()
+        if task:
+            _set(num, 'task', task, False)
+        else:
+            _err('Task text cannot be empty','invalid argument')
+    else:
+        _err('Pass an integer ID of the task you wish to edit and task text separated by space', 'invalid argument')
+
+def show(args):
+    #shows a single task with all the details
     pass
 
 # adds a new task
@@ -752,7 +790,7 @@ def new(args):
         writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerow(new_task)
-        #print added task with the id 1
+        print 'Added task 1'
         csv_out.close
     else:
         csv_in = open(filename)
@@ -764,7 +802,8 @@ def new(args):
         for row in reader:
             writer.writerow(row)
             count += 1
-        #print added task with the id
+        print 'Added task ' + count
+        
         writer.writerow(new_task)
         csv_in.close
         csv_out.close
@@ -792,6 +831,7 @@ Usage:  todo ...TITLE...[@TASKLIST][+TAG]
     -r, --remove    ID[,ID]             removes a task by a given task ID
     -c, --complete  ID[,ID]             completes a task by a given ID
     -t, --track     ID                  time track single task, exit keyboard interupt
+    -e, --edit      ID                  edit the text of a single task
     -i, --important ID[,ID]             toggles the important state
     -d, --due       ID[,ID]             toggles the due state (soon / later)
     -T, --tasklist  ID[,ID] [TASKLIST]  adds tasks to a tasklist
@@ -805,10 +845,15 @@ Usage:  todo ...TITLE...[@TASKLIST][+TAG]
 #TODO: Verson -v
 #TODO: uninstall
 #TODO: update
+
 # Connects commands with real functions
 fn = {
     'r': delete,
     'remove': delete,
+    's': show,
+    'show': show,
+    'e': edit,
+    'edit': edit,
     'd': due,
     'due': due,
     'c': complete,
