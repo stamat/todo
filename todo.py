@@ -276,6 +276,21 @@ def _deltatime(string):
     return re.sub(r"\.[0-9]+", '', str(time))
 
 
+def _csvnum(val, fn):
+    val = val.strip()
+    if val and val != '':
+        try:
+            return fn(val)
+        except Exception as ex:
+            pass
+    return 0
+
+def _csvfloat(val):
+    return _csvnum(val, float)
+
+def _csvint(val):
+    return _csvnum(val, float)
+
 # display all tags and number of tasks, number of important tasks, number of due soon tasks
 def display_tags(args=None):
     csv_in = open(filename)
@@ -283,23 +298,25 @@ def display_tags(args=None):
     res = {}
     for row in reader:
         tags = _csvlist(row['tags'])
+        time_spent = row['time_spent'];
+        
         if tags:
             for t in tags:
                 if t in res:
                     r = res[t]
                     r['count'] += 1
-                    if int(row['important']):
+                    if _csvint(row['important']):
                         r['important'] += 1
-                    if int(row['due']):
+                    if _isDue(row['due']):
                         r['due'] += 1
-                    if row['time_spent'] and row['time_spent'] != '':
-                        r['time'] += float(row['time_spent'])
+                        
+                    r['time'] += _csvfloat(row['time_spent'])
                 else:
                     res[t] = {
                         'count': 1,
-                        'important':  1 if int(row['important']) else 0,
-                        'due': 1 if int(row['due']) else 0,
-                        'time': float(row['time_spent'])
+                        'important': _csvint(row['important']),
+                        'due':  _csvint(row['due']),
+                        'time': _csvfloat(row['time_spent'])
                     }
     
     if texttable_available:        
@@ -334,18 +351,18 @@ def display_tasklists(args=None):
         if row['tasklist'] in res:
             r = res[row['tasklist']]
             r['count'] += 1
-            if int(row['important']):
+            if _csvint(row['important']):
                 r['important'] += 1
             if _isDue(row['due']):
                 r['due'] += 1
             if row['time_spent'] and row['time_spent'] != '':
-                r['time'] += float(row['time_spent'])
+                r['time'] += _csvfloat(row['time_spent'])
         else:
             res[row['tasklist']] = {
                 'count': 1,
-                'important':  1 if int(row['important']) else 0,
-                'due': 1 if int(row['due']) else 0,
-                'time': float(row['time_spent'])
+                'important': _csvint(row['important']),
+                'due':  _csvint(row['due']),
+                'time': _csvfloat(row['time_spent'])
             }
     
     if texttable_available:
@@ -875,7 +892,7 @@ fn = {
     'rmtag': rmtag,
     'h': help,
     'help': help,
-    'tasklists': display_tasklists,
+    'lists': display_tasklists,
     'tags': display_tags,
     'a': display_detailed,
     'details': display_detailed
