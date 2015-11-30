@@ -846,7 +846,7 @@ Usage:  todo ...TITLE...[@TASKLIST][+TAG]
 #TODO: uninstall
 #TODO: update
 
-def ver(args=None):
+def vers(args=None):
     print 'version: ' + version
     
 # Connects commands with real functions
@@ -855,6 +855,8 @@ fn = {
     'remove': delete,
     's': show,
     'show': show,
+    'v': vers,
+    'version': vers,
     'e': edit,
     'edit': edit,
     'd': due,
