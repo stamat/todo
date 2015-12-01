@@ -56,22 +56,22 @@ def _bother(default):
     if npath == "":
         print 'As you command sir, we\'ll be using the default path'
         return default
-    
+
     try:
         assert os.path.exists(npath) and os.path.isdir(npath)
     except AssertionError:
         print 'Error: Sorry, the directory "'+npath+'" doesn\'t exits! Please try again.'
         return _bother(default)
-    
+
     return npath
 
 # Reads an INI file and returns a ConfigParser object that can be iterated
 def _readconf(file_path):
     conf = ConfigParser.RawConfigParser()
-    
+
     if not os.path.exists(file_path) and not os.path.isfile(file_path):
         return conf
-    
+
     try:
         f = open(file_path)
         conf.readfp(f)
@@ -79,7 +79,7 @@ def _readconf(file_path):
     except IOError as e:
         print "I/O error({0}): {1}".format(e.errno, e.strerror)
         raise
-    
+
     return conf
 
 # Sets a value of a INI ConfigParser object by a given section and key
@@ -87,7 +87,7 @@ def _setconf(conf, section, key, value):
     if not conf.has_section(section):
         conf.add_section(section)
     conf.set(section, key, value)
-    
+
     return conf
 
 # Writes INI ConfigParser object to a file
@@ -99,7 +99,7 @@ def _writeconf(file_path, conf):
     except IOError as e:
         print "I/O error({0}): {1}".format(e.errno, e.strerror)
         raise
-    
+
     return True
 
 conf = _readconf(config_cfg)
@@ -128,18 +128,18 @@ If you wish you can enter a directory where you would like to save the CSV todo 
     _setconf(conf, 'general', 'dir', npath)
     _setconf(conf, 'general', 'name', uname.capitalize())
     _writeconf(config_cfg, conf)
-    
+
     print '''
 Thanks, you're a real pal!
 
-    
+
         ,d88b.d88b,
         88888888888
         `Y8888888Y'
-          `Y888Y'  
+          `Y888Y'
             `Y'
 '''
-    
+
 filename = os.path.join(conf.get('general', 'dir'), filename)
 tmp_filename = os.path.join(conf.get('general', 'dir'), tmp_filename)
 filename_completed = os.path.join(conf.get('general', 'dir'), filename_completed)
@@ -164,7 +164,7 @@ def _uprint(new):
 def _parsenum(num, mod=None):
     num = num.split(',')
     last = 1
-    
+
     try:
         reader
     except NameError:
@@ -173,14 +173,14 @@ def _parsenum(num, mod=None):
         reader = list(reader)
         last = len(reader);
         csv_in.close
-        
+
     for i in range(0, len(num)):
         if num[i] == 'last':
             num[i] = last
         num[i] = int(num[i])
         if mod:
             num[i] += mod
-        
+
     return num
 
 
@@ -190,14 +190,14 @@ def _set(num, field, value, value_array = True):
     csv_out =  open(tmp_filename, 'w')
     reader = csv.DictReader(csv_in)
     reader = list(reader)
-    
+
     writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
     writer.writeheader()
-    
+
     if not isinstance(num, list):
         num = [int(num)-1]
         value = [value]
-    
+
     for i in range(0, len(num)):
         try:
             if field:
@@ -207,10 +207,10 @@ def _set(num, field, value, value_array = True):
             reader[num[i]]['last_modified'] = time.time()
         except IndexError:
             print 'Error: Nonexistent entry', str(num[i]+1)
-    
+
     for row in reader:
         writer.writerow(row)
-        
+
     csv_in.close
     csv_out.close
     os.rename(tmp_filename, filename)
@@ -220,14 +220,14 @@ def _get(num, field=None):
     csv_in = open(filename)
     reader = csv.DictReader(csv_in)
     reader = list(reader)
-    
+
     one_result = False
     if not isinstance(num, list):
         num = [int(num)-1]
         one_result = True
-        
+
     result = []
-    
+
     for i in range(0, len(num)):
         try:
             if field:
@@ -236,12 +236,12 @@ def _get(num, field=None):
                 result.append(reader[num[i]])
         except IndexError:
             print 'Error: Nonexistent entry', str(num[i]+1)
-    
+
     csv_in.close
-    
+
     if one_result:
         return result[0]
-    
+
     return result
 
 # transforms CSV list value into a py list
@@ -265,7 +265,7 @@ def _savetime():
     if _TIME is not 0:
         _TIME = time.time() - _TIME
         _set(num, 'time_spent', _TIME)
-        
+
 atexit.register(_savetime)
 
 
@@ -299,7 +299,7 @@ def display_tags(args=None):
     for row in reader:
         tags = _csvlist(row['tags'])
         time_spent = row['time_spent'];
-        
+
         if tags:
             for t in tags:
                 if t in res:
@@ -309,7 +309,7 @@ def display_tags(args=None):
                         r['important'] += 1
                     if _isDue(row['due']):
                         r['due'] += 1
-                        
+
                     r['time'] += _csvfloat(row['time_spent'])
                 else:
                     res[t] = {
@@ -318,22 +318,22 @@ def display_tags(args=None):
                         'due':  _csvint(row['due']),
                         'time': _csvfloat(row['time_spent'])
                     }
-    
-    if texttable_available:        
+
+    if texttable_available:
         table = texttable.Texttable()
         table.header(['tag', 'tasks', 'important', 'due soon', 'time'])
         table.set_chars([' ',' ',' ','-'])
         table.set_deco(table.HEADER | table.VLINES)
-            
+
         for r in res:
             name = r;
             r = res[r];
             table.add_row([name, r['count'], r['important'], r['due'], _deltatime(r['time'])])
-        
+
         print
         print table.draw()
         print
-        
+
     else:
         print
         for r in res:
@@ -341,7 +341,7 @@ def display_tags(args=None):
             r = res[r];
             print '+'+name+' \t\t[ count: '+str(r['count'])+', important: '+str(r['important'])+', due: '+str(r['due'])+' ]';
         print
-        
+
 # display all tasklists and number of tasks, number of important tasks, number of due soon tasks
 def display_tasklists(args=None):
     csv_in = open(filename)
@@ -364,23 +364,23 @@ def display_tasklists(args=None):
                 'due':  _csvint(row['due']),
                 'time': _csvfloat(row['time_spent'])
             }
-    
+
     if texttable_available:
         table = texttable.Texttable()
         table.header(['list', 'tasks', 'important', 'due soon', 'time'])
         table.set_chars([' ',' ',' ','-'])
         table.set_deco(table.HEADER | table.VLINES)
-            
+
         for r in res:
             name = r;
             r = res[r];
             table.add_row([name, r['count'], r['important'], r['due'], _deltatime(r['time'])])
             #print '@'+name+' ('+str(r['count'])+')      important: '+str(r['important'])+', due: '+str(r['due']);
-        
+
         print
         print table.draw()
         print
-    
+
     else:
         print
         for r in res:
@@ -388,12 +388,12 @@ def display_tasklists(args=None):
             r = res[r];
             print '@'+name+' \t\t[ count: '+str(r['count'])+', important: '+str(r['important'])+', due: '+str(r['due'])+' ]';
         print
-        
+
 
 def _isDue(string):
     if not string or string == '0' or string == 'later':
         return False
-    
+
     if string or string == '1' or string == 'soon':
         return True
     #TODO: compare due time with current time and by configuration treshold decide if it is soon or later
@@ -403,7 +403,7 @@ def _print(num, row, details=False):
         print str(num) + '  ' +row['task']
     else:
         tags = _csvlist(row['tags'])
-        if tags: 
+        if tags:
             tags = ', '.join(tags)
         else:
             tags = ''
@@ -415,12 +415,12 @@ def display_tasklist(tasklist, reader, details=False):
     if not details:
         print
     count = 1
-    
+
     for row in reader:
         if tasklist == row['tasklist']:
             _print(count, row, details)
         count += 1
-        
+
     if not details:
         print
 
@@ -429,7 +429,7 @@ def display_tag(tag, reader, details=False):
     if not details:
         print
     count = 1
-    
+
     for row in reader:
         tags = _csvlist(row['tags'])
         if tags:
@@ -437,7 +437,7 @@ def display_tag(tag, reader, details=False):
                 if tag == t:
                     _print(count, row, details)
         count += 1
-        
+
     if not details:
         print
 
@@ -446,18 +446,18 @@ def quadrant(imp, due, reader, details=False):
     if not details:
         print
     count = 1
-    
+
     def validateDue(row):
         return _isDue(row['due']) is due
-    
+
     def validateImp(row):
         a = int(row['important'] if row['important'] else 0)
         b = 1 if imp else 0
         return a == b
-    
+
     def validateBoth(row):
         return validateDue(row) and validateImp(row)
-    
+
     validate = validateBoth
     if imp is None:
         validate = validateDue
@@ -468,7 +468,7 @@ def quadrant(imp, due, reader, details=False):
         if validate(row):
             _print(count, row, details)
         count += 1
-        
+
     if not details:
         print
 
@@ -483,57 +483,57 @@ def query(tasklist=None, tags=None, imp=None, due=None):
 def display(args=None, details=False):
     csv_in = open(filename)
     reader = csv.DictReader(csv_in)
-    
+
     if not texttable_available:
         details = False
-    
+
     if details:
         details = texttable.Texttable()
         details.header(['id', 'task', '!', '*', 'task list', 'tags', 'time'])
-        
+
     regular = True
-    
+
     if args:
         regular = False
         args = args.strip()
         tl = pat_tl.search(args)
         if tl:
             display_tasklist(tl.group(1), reader, details)
-            
+
         tg = pat_tg.search(args)
         if tg:
             display_tag(tg.group(1), reader, details)
-        
+
         imp = None
         due = None
-        
+
         pts = args.split(' ')
-        
+
         def check(string, list1, list2):
             if string in list1:
                 return True
             if string in list2:
                 return False
             return None
-        
+
         if len(pts) is 0:
             regular = True
-        else: 
+        else:
             imp = check(pts[0], ['i', 'important'], ['u', 'unimportant'])
             if imp is None:
                 due = check(pts[0], ['s', 'soon'], ['l', 'later'])
-            
+
             if len(pts) is 2:
                 if imp is None:
                     imp = check(pts[1], ['i', 'important'], ['u', 'unimportant'])
                 if due is None:
                     due = check(pts[1], ['s', 'soon'], ['l', 'later'])
-        
+
         if imp is None and due is None:
             regular = True
         else:
             quadrant(imp, due, reader, details)
-        
+
     if regular:
         print
         count = 1
@@ -541,7 +541,7 @@ def display(args=None, details=False):
             _print(count, row, details)
             count += 1
         print
-        
+
     if details:
         details.set_cols_width([3, 30, 1, 1, 10, 8, 8])
         details.set_deco(details.HEADER | details.VLINES)
@@ -550,7 +550,7 @@ def display(args=None, details=False):
         print
         print details.draw()
         print
-    
+
     csv_in.close
 
 
@@ -564,12 +564,12 @@ def delete(num):
     csv_out =  open(tmp_filename, 'w')
     reader = csv.DictReader(csv_in)
     reader = list(reader)
-    
+
     num = _parsenum(num)
-    
+
     writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
     writer.writeheader()
-    
+
     count = 1
     for row in reader:
         flag = True
@@ -577,11 +577,11 @@ def delete(num):
             if count is num[i]:
                 flag = False
                 break
-            
-        if flag:        
+
+        if flag:
             writer.writerow(row)
         count += 1
-        
+
     csv_in.close
     csv_out.close
     os.rename(tmp_filename, filename)
@@ -601,19 +601,19 @@ def track(num):
         _TIME = time.time()
     else:
         _TIME = time.time()-float(_TIME)
-        
+
     def timed_output(st, delay):
         while True:
             _uprint(_deltatime(time.time() - st))
             time.sleep(delay)
-            
+
     delay = 1
     t = threading.Thread(target = timed_output, args = (_TIME, delay))
-    
+
     print
     t.daemon = True
     t.start()
-    
+
     try:
         while True:
             time.sleep(delay)
@@ -632,9 +632,9 @@ def settime(): #replaces time spent with user given value
 def due(num):
     #TODO: today, tomorrow, two weeks, two days, someday
     num = _parsenum(num, -1)
-    
+
     res = _get(num, 'due')
-    
+
     for i in range(0, len(num)):
         if res[i] is '':
             res[i] = 0
@@ -642,20 +642,20 @@ def due(num):
             res[i] = int(res[i])
         if res[i] is 0:
             res[i] +=1
-            print 'Task {0} set to due soon'.format(num[i]+1) 
+            print 'Task {0} set to due soon'.format(num[i]+1)
         else:
             res[i] -=1
-            print 'Task {0} set to due later'.format(num[i]+1) 
-        
+            print 'Task {0} set to due later'.format(num[i]+1)
+
     _set(num, 'due', res)
 
 
 #task importance toggle
-def important(num): 
+def important(num):
     num = _parsenum(num, -1)
-    
+
     res = _get(num, 'important')
-    
+
     for i in range(0, len(num)):
         if res[i] is '':
             res[i] = 0
@@ -663,11 +663,11 @@ def important(num):
             res[i] = int(res[i])
         if res[i] is 0:
             res[i] +=1
-            print 'Task {0} set to important'.format(num[i]+1) 
+            print 'Task {0} set to important'.format(num[i]+1)
         else:
             res[i] -=1
-            print 'Task {0} set to unimportant'.format(num[i]+1) 
-        
+            print 'Task {0} set to unimportant'.format(num[i]+1)
+
     _set(num, 'important', res)
 
 
@@ -681,7 +681,7 @@ def tasklist(args):
         pts[1] = re.sub(r"@",'',pts[1])
     else:
         pts.insert(1, '')
-        
+
     num = _parsenum(pts[0], -1)
     _set(num, 'tasklist', pts[1], False)
 
@@ -689,62 +689,62 @@ def tasklist(args):
 #assigns tags to the task, add tags to a task list, remove the tags, etc..
 def tag(args):
     pts = args.split(' ', 1)
-    
+
     if len(pts) < 2:
         _err('tag option requires 2 parameters, first the task id, second tag names separated by space', 'invalid argument')
         return
-    
+
     pts[1] = re.sub(r"\+",'',pts[1])
     ntags = pts[1].split(' ')
-    
+
     num = _parsenum(pts[0], -1)
-    
+
     tags = _get(num, 'tags')
-    
+
     result = []
-    
+
     nntags = set(ntags)
     for i in range(0, len(num)):
         if not tags[i] == '':
             tg = _csvlist(tags[i])
-            otags = set(tg)  
+            otags = set(tg)
             result.append(tg + list(nntags-otags))
         else:
             result.append(ntags)
-    
+
     _set(num, 'tags', result)
- 
-# removes given tags separated by space beginning with +   
+
+# removes given tags separated by space beginning with +
 def rmtag(args):
     pts = args.split(' ', 1)
-    
+
     if len(pts) < 2:
         _err('rmtag option requires 2 parameters, first the task id, second tag names separated by space','invalid argument')
         return
-    
+
     pts[1] = re.sub(r"\+",'',pts[1])
     ntags = pts[1].split(' ')
-    
+
     num = _parsenum(pts[0], -1)
-    
+
     tags = _get(num, 'tags')
-    
+
     result = []
-    
+
     nntags = set(ntags)
     for i in range(0, len(num)):
         if not tags[i] == '':
             tg = _csvlist(tags[i])
-            otags = set(tg)  
+            otags = set(tg)
             result.append(list(otags-nntags))
         else:
             result.append('')
-    
+
     _set(num, 'tags', result)
-    
+
 
 # imports a CSV
-def imprt(): 
+def imprt():
     #maybe parses your code for TODO: comments displays line number in task text
     pass
 
@@ -778,30 +778,30 @@ def new(args):
     new_task = {'created': time.time(),
                 'important': 0,
                 'due': 0}
-    
+
     #check task for @tasklist #tag #tag
     pat_all_tl = re.compile(r"^@[^@\s\-]+\s?|\s@[^@\s\-]+\s?")
     pat_all_tg = re.compile(r"\s?\+[^\+\s\-]+\s?")
-    
+
     def tlrepl(mo):
        if mo.group(0).startswith(' ') and mo.group(0).endswith(' '): return ' '
        else: return ''
-       
+
     tl = pat_all_tl.findall(args)
     if tl:
         args = re.sub(pat_all_tl, tlrepl, args)
         new_task['tasklist'] = re.sub(r"[\s@]", '', tl[0])
-    
+
     tg = pat_all_tg.findall(args)
-    
+
     if tg:
         args = re.sub(pat_all_tg, tlrepl, args)
         for i in range(0,len(tg)):
             tg[i] = re.sub(r"[\s\+]", '', tg[i])
         new_task['tags'] = tg
-            
+
     new_task['task'] = args.strip()
-    
+
     if not os.path.exists(filename):
         csv_out =  open(filename, 'w')
         writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
@@ -820,7 +820,7 @@ def new(args):
             writer.writerow(row)
             count += 1
         print 'Added task ' + count
-        
+
         writer.writerow(new_task)
         csv_in.close
         csv_out.close
@@ -835,14 +835,14 @@ TODO - CLI task manager with time tracking
 
 Usage:  todo ...TITLE...[@TASKLIST][+TAG]
         Add a new task, it can have one task list and multiple tags
-        
+
         todo
         Lists all the tasks
-        
+
         todo [OPTION] ...PARAMS...
         Performs an option
-        
-        
+
+
     -l, --list      [TASKLIST [TAG]]    lists all tasks, or all task within a list or with a tag
     -a, --details   [TASKLIST [TAG]]    lists all tasks with details
     -r, --remove    ID[,ID]             removes a task by a given task ID
@@ -854,7 +854,7 @@ Usage:  todo ...TITLE...[@TASKLIST][+TAG]
     -T, --tasklist  ID[,ID] [TASKLIST]  adds tasks to a tasklist
     --tag           ID[,ID] TAG[ TAG]   adds tags to tasks
     --rmtag         ID[,ID] TAG[ TAG]   removes existing tags from tasks
-    --lists                             lists all task lists
+    --tasklists                         lists all task lists
     --tags                              lists all tags
     -h, --help                          displays this help
     -v, --version                       displays version
@@ -865,7 +865,7 @@ Usage:  todo ...TITLE...[@TASKLIST][+TAG]
 
 def vers(args=None):
     print 'version: ' + version
-    
+
 # Connects commands with real functions
 fn = {
     'r': delete,
@@ -892,7 +892,7 @@ fn = {
     'rmtag': rmtag,
     'h': help,
     'help': help,
-    'lists': display_tasklists,
+    'tasklists': display_tasklists,
     'tags': display_tags,
     'a': display_detailed,
     'details': display_detailed
@@ -909,13 +909,13 @@ if m:
             dashes = c.group(1)
             command = c.group(2)
             value = c.group(3)
-            
+
             if len(dashes) is 1:
                 for cm in command:
                     _execute(cm, value)
             else:
                 _execute(command, value)
-            
+
 else:
     #add new todo
     if args.strip() == '':
