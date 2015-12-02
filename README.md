@@ -102,7 +102,7 @@ I used to think the last one is some capitalist bullshit, but it really means yo
 
 ##### This project was heavily influenced by:
 
-** Randy Pausch Lecture: Time Management **
+**Randy Pausch Lecture: Time Management**
 ( https://www.youtube.com/watch?v=oTugjssqOT0 )
 
-** Stephen Covey's Quadrant ** ( https://en.wikipedia.org/wiki/First_Things_First_(book) )
+**Stephen Covey's Quadrant** ( https://en.wikipedia.org/wiki/First_Things_First_(book) )
