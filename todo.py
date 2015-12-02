@@ -102,6 +102,13 @@ def _writeconf(file_path, conf):
 
     return True
 
+def _UTCTimestamp():
+    return int( time.mktime(time.gmtime()) )
+
+def _UTC2LocalTimestamp(utc_timestamp):
+    return utc_timestamp + (int(time.time()) - _UTCTimestamp())
+
+
 conf = _readconf(config_cfg)
 
 
@@ -204,7 +211,7 @@ def _set(num, field, value, value_array = True):
                 reader[num[i]][field] = value[i] if value_array else value
             else:
                 reader[num[i]] = value[i] if value_array else value
-            reader[num[i]]['last_modified'] = time.time()
+            reader[num[i]]['last_modified'] = _UTCTimestamp()
         except IndexError:
             print 'Error: Nonexistent entry', str(num[i]+1)
 
@@ -272,7 +279,7 @@ atexit.register(_savetime)
 def _deltatime(string):
     if type(string) is str and string.strip() == '':
         return '0:00:00'
-    time = timedelta(0, float(string))
+    time = timedelta(0, int(string))
     return re.sub(r"\.[0-9]+", '', str(time))
 
 
@@ -289,7 +296,7 @@ def _csvfloat(val):
     return _csvnum(val, float)
 
 def _csvint(val):
-    return _csvnum(val, float)
+    return _csvnum(val, int)
 
 # display all tags and number of tasks, number of important tasks, number of due soon tasks
 def display_tags(args=None):
@@ -310,13 +317,13 @@ def display_tags(args=None):
                     if _isDue(row['due']):
                         r['due'] += 1
 
-                    r['time'] += _csvfloat(row['time_spent'])
+                    r['time'] += _csvint(row['time_spent'])
                 else:
                     res[t] = {
                         'count': 1,
                         'important': _csvint(row['important']),
                         'due':  _csvint(row['due']),
-                        'time': _csvfloat(row['time_spent'])
+                        'time': _csvint(row['time_spent'])
                     }
 
     if texttable_available:
@@ -356,13 +363,13 @@ def display_tasklists(args=None):
             if _isDue(row['due']):
                 r['due'] += 1
             if row['time_spent'] and row['time_spent'] != '':
-                r['time'] += _csvfloat(row['time_spent'])
+                r['time'] += _csvint(row['time_spent'])
         else:
             res[row['tasklist']] = {
                 'count': 1,
                 'important': _csvint(row['important']),
                 'due':  _csvint(row['due']),
-                'time': _csvfloat(row['time_spent'])
+                'time': _csvint(row['time_spent'])
             }
 
     if texttable_available:
@@ -600,7 +607,7 @@ def track(num):
     if _TIME is '':
         _TIME = time.time()
     else:
-        _TIME = time.time()-float(_TIME)
+        _TIME = time.time() - int(_TIME)
 
     def timed_output(st, delay):
         while True:
@@ -619,7 +626,7 @@ def track(num):
             time.sleep(delay)
     except KeyboardInterrupt:
         _TIME = time.time() - _TIME
-        _set(num, 'time_spent', _TIME)
+        _set(num, 'time_spent', int(_TIME))
         _TIME = 0
 
 def addtime(): #add hours to hours spent
@@ -775,7 +782,7 @@ def show(args):
 
 # adds a new task
 def new(args):
-    new_task = {'created': time.time(),
+    new_task = {'created': _UTCTimestamp(),
                 'important': 0,
                 'due': 0}
 
