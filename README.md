@@ -84,7 +84,6 @@ Example usage in a form of a little tutorial. To learn how to use `todo` follow 
 ### Future development
 
 * **Default view** - set a custom query to be your default view when you type `todo`
-* **Complex queries** - query all the tasks in the task list which have a some tag and are important and due soon
 * **Time tracking statistics** - how many time you spent per day/week/month/year on a single task, single task list, single tag
 * **Completed tasks archive**
 * **Import CSV** - there will be extendable definitions of CSV head to head extension
@@ -102,7 +101,7 @@ I used to think the last one is some capitalist bullshit, but it really means yo
 
 ##### This project was heavily influenced by:
 
-** Randy Pausch Lecture: Time Management **
+**Randy Pausch Lecture: Time Management**
 ( https://www.youtube.com/watch?v=oTugjssqOT0 )
 
-** Stephen Covey's Quadrant ** ( https://en.wikipedia.org/wiki/First_Things_First_(book) )
+**Stephen Covey's Quadrant** ( https://en.wikipedia.org/wiki/First_Things_First_(book) )

@@ -23,7 +23,7 @@ args = sys.argv
 args.pop(0)
 args = ' '.join(args)
 
-version = '1.0.2'
+version = '1.0.4'
 
 #TODO: Preferences for argumentless display of tasks, default query
 #TODO: add UID for tasks for server synchronisation, should be creation timestamp in combination with autoincrement ID, to prevent multidevice sync confusion
@@ -101,6 +101,13 @@ def _writeconf(file_path, conf):
         raise
 
     return True
+
+def _UTCTimestamp():
+    return int( time.mktime(time.gmtime()) )
+
+def _UTC2LocalTimestamp(utc_timestamp):
+    return utc_timestamp + (int(time.time()) - _UTCTimestamp())
+
 
 conf = _readconf(config_cfg)
 
@@ -204,7 +211,7 @@ def _set(num, field, value, value_array = True):
                 reader[num[i]][field] = value[i] if value_array else value
             else:
                 reader[num[i]] = value[i] if value_array else value
-            reader[num[i]]['last_modified'] = time.time()
+            reader[num[i]]['last_modified'] = _UTCTimestamp()
         except IndexError:
             print 'Error: Nonexistent entry', str(num[i]+1)
 
@@ -285,10 +292,10 @@ def _csvnum(val, fn):
             pass
     return 0
 
-def _csvfloat(val):
-    return _csvnum(val, float)
+def _csvint(val, fn):
+    return _csvnum(val, int)
 
-def _csvint(val):
+def _csvint(val, fn):
     return _csvnum(val, float)
 
 # display all tags and number of tasks, number of important tasks, number of due soon tasks
@@ -296,6 +303,7 @@ def display_tags(args=None):
     csv_in = open(filename)
     reader = csv.DictReader(csv_in)
     res = {}
+    
     for row in reader:
         tags = _csvlist(row['tags'])
         time_spent = row['time_spent'];
@@ -305,18 +313,21 @@ def display_tags(args=None):
                 if t in res:
                     r = res[t]
                     r['count'] += 1
-                    if _csvint(row['important']):
+                    if _isImportant(row['important']):
                         r['important'] += 1
                     if _isDue(row['due']):
                         r['due'] += 1
 
-                    r['time'] += _csvfloat(row['time_spent'])
+                    r['time'] += _csvint(row['time_spent'])
                 else:
+                    due = 1 if _isDue(row['due']) else 0
+                    important = 1 if _isImportant(row['important']) else 0
+                    
                     res[t] = {
                         'count': 1,
-                        'important': _csvint(row['important']),
-                        'due':  _csvint(row['due']),
-                        'time': _csvfloat(row['time_spent'])
+                        'important': important,
+                        'due':  due,
+                        'time': _csvint(row['time_spent'])
                     }
 
     if texttable_available:
@@ -351,18 +362,21 @@ def display_tasklists(args=None):
         if row['tasklist'] in res:
             r = res[row['tasklist']]
             r['count'] += 1
-            if _csvint(row['important']):
+            if _isImportant(row['important']):
                 r['important'] += 1
             if _isDue(row['due']):
                 r['due'] += 1
             if row['time_spent'] and row['time_spent'] != '':
-                r['time'] += _csvfloat(row['time_spent'])
+                r['time'] += _csvint(row['time_spent'])
         else:
+            due = 1 if _isDue(row['due']) else 0
+            important = 1 if _isImportant(row['important']) else 0
+            
             res[row['tasklist']] = {
                 'count': 1,
-                'important': _csvint(row['important']),
-                'due':  _csvint(row['due']),
-                'time': _csvfloat(row['time_spent'])
+                'important': important,
+                'due':  due,
+                'time': _csvint(row['time_spent'])
             }
 
     if texttable_available:
@@ -389,13 +403,17 @@ def display_tasklists(args=None):
             print '@'+name+' \t\t[ count: '+str(r['count'])+', important: '+str(r['important'])+', due: '+str(r['due'])+' ]';
         print
 
+def _isImportant(string):
+    if not string or string == '0':
+        return False
+    return True
 
 def _isDue(string):
     if not string or string == '0' or string == 'later':
         return False
 
-    if string or string == '1' or string == 'soon':
-        return True
+    #if string or string == '1' or string == 'soon':
+    return True
     #TODO: compare due time with current time and by configuration treshold decide if it is soon or later
 
 def _print(num, row, details=False):
@@ -410,77 +428,86 @@ def _print(num, row, details=False):
         time = _deltatime(row['time_spent'])
         details.add_row([num, row['task'], 'o' if int(row['important']) else '', 'o' if int(row['due']) else '', row['tasklist'], tags, time]);
 
-# display all tasks in a tasklist
-def display_tasklist(tasklist, reader, details=False):
-    if not details:
-        print
+
+def parseQuery(s):
+    pat_tl = re.compile(r"@([^@\s\-\+]+)\s?")
+    pat_tg = re.compile(r"\+([^@\s\-\+]+)\s?")
+    pat_i = re.compile(r"unimportant|important")
+    pat_d = re.compile(r"later|soon")
+    
+    res = {}
+    
+    tasklists = pat_tl.findall(s)
+    if tasklists:
+        res['tasklists'] = tasklists
+        s = re.sub(pat_tl, '', s)
+        
+    tags = pat_tg.findall(s)
+    if tags:
+        res['tags'] = tags
+        s = re.sub(pat_tg, '', s)
+    
+    i = pat_i.findall(s)
+    if i:
+        if i[0] == 'important':
+            res['important'] = True
+        else:
+            res['important'] = False
+    
+    d = pat_d.findall(s)
+    if d:
+        if d[0] == 'soon':
+            res['due'] = True
+        else:
+            res['due'] = False
+    
+    return res
+
+def query(q, reader):
+    res = []
+    
     count = 1
-
-    for row in reader:
-        if tasklist == row['tasklist']:
-            _print(count, row, details)
-        count += 1
-
-    if not details:
-        print
-
-# display all tasks in a tasklist
-def display_tag(tag, reader, details=False):
-    if not details:
-        print
-    count = 1
-
+    
     for row in reader:
         tags = _csvlist(row['tags'])
-        if tags:
-            for t in tags:
-                if tag == t:
-                    _print(count, row, details)
+        tasklist = row['tasklist']
+        
+        def check(arr1, arr2):
+            if arr1 and arr2:
+                for a1 in arr1:
+                    for a2 in arr2:
+                        if a1 == a2:
+                            return True
+            return False
+        
+        tags_flag = True
+        if 'tags' in q:
+            tags_flag = check(tags, q['tags'])
+            
+        tasklists_flag =  True
+        if 'tasklists'  in q:
+            tasklists_flag = check([tasklist], q['tasklists'])
+        
+        i_flag = True
+        if 'important' in q:
+            i_flag = _isImportant(row['important']) == q['important']
+        
+        d_flag = True
+        if 'due' in q:
+            d_flag = _isDue(row['due']) == q['due']
+        
+        row['count'] = count
+        
+        if tags_flag and tasklists_flag and i_flag and d_flag:
+            res.append(row)
+        
         count += 1
-
-    if not details:
-        print
-
-#TODO: gets tasks by importance and due now
-def quadrant(imp, due, reader, details=False):
-    if not details:
-        print
-    count = 1
-
-    def validateDue(row):
-        return _isDue(row['due']) is due
-
-    def validateImp(row):
-        a = int(row['important'] if row['important'] else 0)
-        b = 1 if imp else 0
-        return a == b
-
-    def validateBoth(row):
-        return validateDue(row) and validateImp(row)
-
-    validate = validateBoth
-    if imp is None:
-        validate = validateDue
-    if due is None:
-        validate = validateImp
-
-    for row in reader:
-        if validate(row):
-            _print(count, row, details)
-        count += 1
-
-    if not details:
-        print
-
-def parseQuery(args=None):
-    print args
-    pass
-
-def query(tasklist=None, tags=None, imp=None, due=None):
-    pass
+        
+    return res
 
 #TODO: Complex queries, query tag, important and/or due inside a tasklist or a tag
 def display(args=None, details=False):
+    
     csv_in = open(filename)
     reader = csv.DictReader(csv_in)
 
@@ -489,58 +516,35 @@ def display(args=None, details=False):
 
     if details:
         details = texttable.Texttable()
-        details.header(['id', 'task', '!', '*', 'task list', 'tags', 'time'])
-
+        details.header(['id', 'task', '*', '!', 'task list', 'tags', 'time'])
+    
     regular = True
-
     if args:
-        regular = False
-        args = args.strip()
-        tl = pat_tl.search(args)
-        if tl:
-            display_tasklist(tl.group(1), reader, details)
-
-        tg = pat_tg.search(args)
-        if tg:
-            display_tag(tg.group(1), reader, details)
-
-        imp = None
-        due = None
-
-        pts = args.split(' ')
-
-        def check(string, list1, list2):
-            if string in list1:
-                return True
-            if string in list2:
-                return False
-            return None
-
-        if len(pts) is 0:
-            regular = True
-        else:
-            imp = check(pts[0], ['i', 'important'], ['u', 'unimportant'])
-            if imp is None:
-                due = check(pts[0], ['s', 'soon'], ['l', 'later'])
-
-            if len(pts) is 2:
-                if imp is None:
-                    imp = check(pts[1], ['i', 'important'], ['u', 'unimportant'])
-                if due is None:
-                    due = check(pts[1], ['s', 'soon'], ['l', 'later'])
-
-        if imp is None and due is None:
-            regular = True
-        else:
-            quadrant(imp, due, reader, details)
-
+        q = parseQuery(args)
+        if q:
+            regular = False
+            rows = query(q, reader)
+            
+            if not details:
+                print
+            
+            for row in rows:
+                _print(row['count'], row, details)
+                
+            if not details:
+                print
+    
     if regular:
-        print
         count = 1
+        if not details:
+                print
+                
         for row in reader:
             _print(count, row, details)
             count += 1
-        print
+
+        if not details:
+                print
 
     if details:
         details.set_cols_width([3, 30, 1, 1, 10, 8, 8])
@@ -600,7 +604,7 @@ def track(num):
     if _TIME is '':
         _TIME = time.time()
     else:
-        _TIME = time.time()-float(_TIME)
+        _TIME = time.time() - int(_TIME)
 
     def timed_output(st, delay):
         while True:
@@ -619,7 +623,7 @@ def track(num):
             time.sleep(delay)
     except KeyboardInterrupt:
         _TIME = time.time() - _TIME
-        _set(num, 'time_spent', _TIME)
+        _set(num, 'time_spent', int(_TIME))
         _TIME = 0
 
 def addtime(): #add hours to hours spent
@@ -775,7 +779,7 @@ def show(args):
 
 # adds a new task
 def new(args):
-    new_task = {'created': time.time(),
+    new_task = {'created': _UTCTimestamp(),
                 'important': 0,
                 'due': 0}
 
