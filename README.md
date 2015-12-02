@@ -84,7 +84,6 @@ Example usage in a form of a little tutorial. To learn how to use `todo` follow 
 ### Future development
 
 * **Default view** - set a custom query to be your default view when you type `todo`
-* **Complex queries** - query all the tasks in the task list which have a some tag and are important and due soon
 * **Time tracking statistics** - how many time you spent per day/week/month/year on a single task, single task list, single tag
 * **Completed tasks archive**
 * **Import CSV** - there will be extendable definitions of CSV head to head extension
