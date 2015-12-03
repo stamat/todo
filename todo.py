@@ -709,10 +709,13 @@ def tag(args):
 
     nntags = set(ntags)
     for i in range(0, len(num)):
-        if not tags[i] == '':
+        if tags[i]:
             tg = _csvlist(tags[i])
-            otags = set(tg)
-            result.append(tg + list(nntags-otags))
+            if tg:
+                otags = set(tg)
+                result.append(tg + list(nntags-otags))
+            else:
+                result.append(ntags)
         else:
             result.append(ntags)
 
@@ -737,10 +740,13 @@ def rmtag(args):
 
     nntags = set(ntags)
     for i in range(0, len(num)):
-        if not tags[i] == '':
+        if tags[i]:
             tg = _csvlist(tags[i])
-            otags = set(tg)
-            result.append(list(otags-nntags))
+            if tg:
+                otags = set(tg)
+                result.append(list(otags-nntags))
+            else:
+                result.append('')
         else:
             result.append('')
 
@@ -811,6 +817,7 @@ def new(args):
         writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerow(new_task)
+        
         print 'Added task 1'
         csv_out.close
     else:
@@ -819,11 +826,12 @@ def new(args):
         reader = csv.DictReader(csv_in)
         writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
         writer.writeheader()
+        
         count = 1
         for row in reader:
             writer.writerow(row)
             count += 1
-        print 'Added task ' + count
+        print 'Added task ' + str(count)
 
         writer.writerow(new_task)
         csv_in.close
