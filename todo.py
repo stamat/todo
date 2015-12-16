@@ -23,18 +23,17 @@ args = sys.argv
 args.pop(0)
 args = ' '.join(args)
 
-version = '1.0.4'
+version = '1.0.5'
 
 #TODO: Preferences for argumentless display of tasks, default query
 #TODO: add UID for tasks for server synchronisation, should be creation timestamp in combination with autoincrement ID, to prevent multidevice sync confusion
 #synchronisation should happen by last modified has priority
 #completed tasks has a special additional file for synchronisation newly finished tasks after last synchronisation, server appends to completed.csv on serverside. THINK ABOUT THIS, IT WILL BE A HUGE FILE.
-#TODO: time spent statistics in a file. THINK ABOUT THIS
-#TODO: shorten timestamps to seconds only to save the storage space, except creation timestamp. WARCH THE TIMEZONES! REDUCE ALL TIMES TO GMT +0 to avoid server confusion
 #TODO: droplets gui for this TODO
 
 fieldnames = ['task', 'created', 'important', 'due', 'time_spent', 'tasklist', 'tags', 'last_modified']
 filename = 'todo.csv'
+timefile = 'time.csv'
 tmp_filename = 'tmp_todo.csv'
 filename_completed = 'todo_completed.csv'
 tmp_filename_completed = 'tmp_todo_completed.csv'
@@ -147,10 +146,11 @@ Thanks, you're a real pal!
             `Y'
 '''
 
-filename = os.path.join(conf.get('general', 'dir'), filename)
-tmp_filename = os.path.join(conf.get('general', 'dir'), tmp_filename)
-filename_completed = os.path.join(conf.get('general', 'dir'), filename_completed)
-tmp_filename_completed = os.path.join(conf.get('general', 'dir'), tmp_filename_completed)
+destination_dir = conf.get('general', 'dir')
+filename = os.path.join(destination_dir, filename)
+tmp_filename = os.path.join(destination_dir, tmp_filename)
+filename_completed = os.path.join(destination_dir, filename_completed)
+tmp_filename_completed = os.path.join(destination_dir, tmp_filename_completed)
 
 # create the todo file if it doesn't exists
 if not os.path.exists(filename):
@@ -266,14 +266,14 @@ def _execute(command, args=None):
     else:
         print 'Error: Unknown command',command
 
-#savetime if tracking a task time and you exit a terminal
+#TODO savetime if tracking a task time and you exit a terminal
 def _savetime():
     global _TIME
     if _TIME is not 0:
         _TIME = time.time() - _TIME
         _set(num, 'time_spent', _TIME)
 
-atexit.register(_savetime)
+#atexit.register(_savetime)
 
 
 def _deltatime(string):
@@ -418,7 +418,8 @@ def _isDue(string):
 
 def _print(num, row, details=False):
     if not details:
-        print str(num) + '  ' +row['task']
+        tl = ' @'+row['tasklist'] if row['tasklist'] and row['tasklist'].strip() != '' else '';
+        print str(num) + '  ' +row['task']+tl
     else:
         tags = _csvlist(row['tags'])
         if tags:
@@ -595,12 +596,13 @@ def delete(num):
 def complete(arg):
     pass
 
-
 #task time tracking
 def track(num):
     #TODO: log of times per day / statistics
-    global _TIME
+    global _TIME, _SPENT_TIME
     _TIME = _get(num, 'time_spent')
+    cdif = time.time();
+    
     if _TIME is '':
         _TIME = time.time()
     else:
@@ -624,7 +626,58 @@ def track(num):
     except KeyboardInterrupt:
         _TIME = time.time() - _TIME
         _set(num, 'time_spent', int(_TIME))
+        logtime(timefile, int(time.time() - cdif), num)
         _TIME = 0
+
+def _filepath(filename):
+    return os.path.join(destination_dir, filename)
+
+def _tmppath(filename):
+    return os.path.join(destination_dir, 'tmp_'+filename)
+
+def logtime(filename, sec, taskid):
+    path = _filepath(filename)
+    taskid = int(taskid)
+    task = _get(taskid)
+    fieldnames = ['time', 'start_timestamp', 'task', 'tasklist', 'day', 'month', 'year', 'end_timestamp', 'task_creation_timestamp', 'tags']
+    ctime = _UTCTimestamp()
+    
+    log = {}
+    log['time'] = sec
+    log['end_timestamp'] = ctime
+    log['start_timestamp'] = ctime - sec
+    log['task'] = task['task']
+    log['tasklist'] = task['tasklist']
+    log['tags'] = task['tags']
+    log['task_creation_timestamp'] = task['created']
+    d = date.fromtimestamp(_UTC2LocalTimestamp(log['start_timestamp']))
+    log['day'] = d.day
+    log['month'] = d.month
+    log['year'] = d.year
+    
+    if not os.path.exists(path):
+        csv_out =  open(path, 'w')
+        writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerow(log)
+        csv_out.close
+    else:
+        tmp = _tmppath(filename)
+        csv_in = open(path)
+        csv_out =  open(tmp, 'w')
+        reader = csv.DictReader(csv_in)
+        writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
+        writer.writeheader()
+        
+        count = 1
+        for row in reader:
+            writer.writerow(row)
+            count += 1
+
+        writer.writerow(log)
+        csv_in.close
+        csv_out.close
+        os.rename(tmp, path)
 
 def addtime(): #add hours to hours spent
     pass
