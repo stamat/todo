@@ -23,14 +23,12 @@ args = sys.argv
 args.pop(0)
 args = ' '.join(args)
 
-version = '1.0.4'
+version = '1.0.5'
 
 #TODO: Preferences for argumentless display of tasks, default query
 #TODO: add UID for tasks for server synchronisation, should be creation timestamp in combination with autoincrement ID, to prevent multidevice sync confusion
 #synchronisation should happen by last modified has priority
 #completed tasks has a special additional file for synchronisation newly finished tasks after last synchronisation, server appends to completed.csv on serverside. THINK ABOUT THIS, IT WILL BE A HUGE FILE.
-#TODO: time spent statistics in a file. THINK ABOUT THIS
-#TODO: shorten timestamps to seconds only to save the storage space, except creation timestamp. WARCH THE TIMEZONES! REDUCE ALL TIMES TO GMT +0 to avoid server confusion
 #TODO: droplets gui for this TODO
 
 fieldnames = ['task', 'created', 'important', 'due', 'time_spent', 'tasklist', 'tags', 'last_modified']
