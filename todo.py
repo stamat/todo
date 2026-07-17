@@ -413,8 +413,8 @@ def _print(num, row, details=False):
             tags = ', '.join(tags)
         else:
             tags = ''
-        time = _deltatime(row['time_spent'])
-        details.add_row([num, row['task'], 'o' if int(row['important']) else '', 'o' if int(row['due']) else '', row['tasklist'], tags, time])
+        spent = _deltatime(row['time_spent'])
+        details.add_row([num, row['task'], 'o' if _isImportant(row['important']) else '', 'o' if _isDue(row['due']) else '', row['tasklist'], tags, spent])
 
 
 def parseQuery(s):
