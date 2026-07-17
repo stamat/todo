@@ -74,7 +74,7 @@ def _readconf(file_path):
     try:
         conf.read(file_path)
     except OSError as e:
-        print("I/O error({0}): {1}".format(e.errno, e.strerror))
+        print(f"I/O error({e.errno}): {e.strerror}")
         raise
 
     return conf
@@ -93,7 +93,7 @@ def _writeconf(file_path, conf):
         with open(file_path, 'w') as f:
             conf.write(f)
     except OSError as e:
-        print("I/O error({0}): {1}".format(e.errno, e.strerror))
+        print(f"I/O error({e.errno}): {e.strerror}")
         raise
 
     return True
@@ -160,7 +160,7 @@ if not os.path.exists(filename):
 def _uprint(new):
     CURSOR_UP_ONE = '\x1b[1A'
     ERASE_LINE = '\x1b[2K'
-    print((CURSOR_UP_ONE + ERASE_LINE + str(new)))
+    print(CURSOR_UP_ONE + ERASE_LINE + str(new))
 
 
 # gets the current task number, if the value past is string "last" then it is the length of the CSV rows
@@ -408,7 +408,7 @@ def _isDue(string):
 def _print(num, row, details=False):
     if not details:
         tl = ' @'+row['tasklist'] if row['tasklist'] and row['tasklist'].strip() != '' else ''
-        print(str(num) + '  ' +row['task']+tl)
+        print(f'{num}  {row["task"]}{tl}')
     else:
         tags = _csvlist(row['tags'])
         if tags:
@@ -680,10 +680,10 @@ def due(num):
             res[i] = int(res[i])
         if res[i] == 0:
             res[i] +=1
-            print('Task {0} set to due soon'.format(num[i]+1))
+            print(f'Task {num[i]+1} set to due soon')
         else:
             res[i] -=1
-            print('Task {0} set to due later'.format(num[i]+1))
+            print(f'Task {num[i]+1} set to due later')
 
     _set(num, 'due', res)
 
@@ -701,10 +701,10 @@ def important(num):
             res[i] = int(res[i])
         if res[i] == 0:
             res[i] +=1
-            print('Task {0} set to important'.format(num[i]+1))
+            print(f'Task {num[i]+1} set to important')
         else:
             res[i] -=1
-            print('Task {0} set to unimportant'.format(num[i]+1))
+            print(f'Task {num[i]+1} set to unimportant')
 
     _set(num, 'important', res)
 
@@ -794,7 +794,7 @@ def imprt():
 
 def _err(string, code=None):
     code = ' ['+code+']' if code else ''
-    print('Error{1}: {0}'.format(string, code))
+    print(f'Error{code}: {string}')
 
 # edits task by a given id, asks user to dubmit the new title
 def edit(args):
@@ -863,7 +863,7 @@ def new(args):
             for row in reader:
                 writer.writerow(row)
                 count += 1
-            print('Added task ' + str(count))
+            print(f'Added task {count}')
 
             writer.writerow(new_task)
         os.rename(tmp_filename, filename)
@@ -906,7 +906,7 @@ Usage:  todo ...TITLE...[@TASKLIST][+TAG]
 #TODO: update
 
 def vers(args=None):
-    print('version: ' + version)
+    print(f'version: {version}')
 
 # Connects commands with real functions
 fn = {
