@@ -1,10 +1,10 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import sys, os, shutil, stat
 import pwd
 import errno
 
-print '''
+print('''
 TODO - CLI task manager with time tracking
 <http://todotron.com>
 
@@ -14,7 +14,7 @@ Hey, you there, yes you!
 Welcome to the installation of the simple command line tool for task management and time tracking!
 
 Thanks for your interest!
-'''
+''')
 
 user_path = os.path.expanduser('~')
 user_uid = os.getuid()
@@ -41,7 +41,7 @@ def rchmod(path, mod, uid=None, gid=None):
          setPriv(root, f)
 
 if os.name == 'nt':
-    print 'Sorry, installation is currently not supported on Windows :\'('
+    print('Sorry, installation is currently not supported on Windows :\'(')
     sys.exit(1)
 
 
@@ -51,7 +51,7 @@ lib_path = os.path.join(config_path, 'lib')
 symln_path = '/usr/local/bin/todo'
 
 if not os.path.exists(config_path):
-   os.mkdir(config_path, 0777)
+   os.mkdir(config_path, 0o777)
    os.chown(config_path, user_uid, user_gid)
 
 #get the version from file todo.py
@@ -63,7 +63,7 @@ shutil.copy('todo.py', config_path)
 if os.path.exists(lib_path):
    shutil.rmtree(lib_path)
 shutil.copytree('lib', lib_path)
-rchmod(config_path, 0777, user_uid, user_gid)
+rchmod(config_path, 0o777, user_uid, user_gid)
 
 try:
    os.symlink(new_exec_path, symln_path)
@@ -71,22 +71,22 @@ try:
    os.chmod(symln_path, st.st_mode | stat.S_IEXEC)
    
 except OSError as e:
-   if e[0] == errno.EACCES or e[0] == errno.EPERM:
-      print '''** OOPS, NO SUDO PRIVILEGES! **
+   if e.errno == errno.EACCES or e.errno == errno.EPERM:
+      print(f'''** OOPS, NO SUDO PRIVILEGES! **
       
 You'll either need to run this install with sudo or the following command manually:
 
-      sudo ln -s {0} {1}
+      sudo ln -s {new_exec_path} {symln_path}
       
 This command creates the symlink so you can call this program in your terminal by typing "todo"
-'''.format(new_exec_path, symln_path)
+''')
       sys.exit(1)
       
-print '''** INSTALLATION PERFORMED SUCCESSFULLY! **
+print(f'''** INSTALLATION PERFORMED SUCCESSFULLY! **
 
-This application is now installed in "{0}", with symlink "{1}"
+This application is now installed in "{new_exec_path}", with symlink "{symln_path}"
 You can now discard the installation files and use this program by typing "todo" in your terminal. Try:
 
       todo -h
 
-Cheers! ;)'''.format(new_exec_path, symln_path)
+Cheers! ;)''')
