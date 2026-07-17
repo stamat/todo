@@ -7,18 +7,29 @@
 * **Task lists and tags** - task can have one task list and many tags
 * **Simple and complex views**
 
+### Requirements
+
+* **Python 3.9+** (tested on 3.9, 3.11 and 3.13)
+* No third-party packages needed — `todo` uses only the standard library and bundles its own copy of `texttable` in `lib/`
+
+Works on **Linux** and **Mac OS X**. The tool itself runs on Windows, but the installer does not (it relies on symlinks and `sudo`).
+
 ### Installation
-
-Requires **Python 2.6**
-
-Works on **Linux** and **Mac OS X**, should work on Windows too, except the install
 
 0. Download https://github.com/stamat/todo/archive/master.zip
   * `wget https://github.com/stamat/todo/archive/master.zip`
 0. Extract and `cd` to the extracted directory
-  * `unzip mater.zip && cd todo-master`
+  * `unzip master.zip && cd todo-master`
 0. `sudo ./install.py` - installs to *~/.todo* and creates a symlink */usr/local/bin/todo*
 0. `todo`
+
+#### One-liner (curl)
+
+If you trust the source, you can fetch and install in one go:
+
+```sh
+curl -L https://github.com/stamat/todo/archive/master.tar.gz | tar xz && cd todo-master && sudo ./install.py
+```
 
 Running `todo` will prompt you to enter the location for task CSV files to be saved. Personal recommendation would be your *dropbox* folder. This can be changed by editing a configuration file `~/.todo/config.cfg`
 
