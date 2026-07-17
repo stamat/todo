@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 
-import sys, os, shutil, stat
+import sys
+import os
+import shutil
+import stat
 import pwd
 import errno
 

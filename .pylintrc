@@ -1,0 +1,33 @@
+[MAIN]
+# Vendored third-party code, not ours to lint.
+ignore-paths=^lib/.*$
+# Fail the build only if the score drops below this. Bump as code is cleaned up.
+fail-under=8.0
+
+[FORMAT]
+max-line-length=120
+
+[MESSAGES CONTROL]
+# Keep errors and genuinely useful warnings (unused-import/variable,
+# undefined-name, etc). Silence checks that fight this project's
+# deliberate style so pylint output stays signal, not noise.
+disable=
+    missing-module-docstring,
+    missing-class-docstring,
+    missing-function-docstring,
+    invalid-name,
+    global-statement,
+    global-variable-not-assigned,
+    redefined-outer-name,
+    redefined-builtin,
+    broad-exception-caught,
+    import-outside-toplevel,
+    unspecified-encoding,
+    fixme,
+    too-many-branches,
+    too-many-statements,
+    too-many-locals,
+    too-many-return-statements,
+    too-many-arguments,
+    too-many-nested-blocks,
+    too-few-public-methods
