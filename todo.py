@@ -72,9 +72,7 @@ def _readconf(file_path):
         return conf
 
     try:
-        f = open(file_path)
-        conf.read_file(f)
-        f.close()
+        conf.read(file_path)
     except OSError as e:
         print("I/O error({0}): {1}".format(e.errno, e.strerror))
         raise
@@ -92,9 +90,8 @@ def _setconf(conf, section, key, value):
 # Writes INI ConfigParser object to a file
 def _writeconf(file_path, conf):
     try:
-        f = open(file_path, 'w')
-        conf.write(f)
-        f.close()
+        with open(file_path, 'w') as f:
+            conf.write(f)
     except OSError as e:
         print("I/O error({0}): {1}".format(e.errno, e.strerror))
         raise
@@ -154,10 +151,9 @@ tmp_filename_completed = os.path.join(destination_dir, tmp_filename_completed)
 
 # create the todo file if it doesn't exists
 if not os.path.exists(filename):
-    csv_out =  open(filename, 'w', newline='')
-    writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
-    writer.writeheader()
-    csv_out.close()
+    with open(filename, 'w', newline='') as csv_out:
+        writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
+        writer.writeheader()
 
 
 # updated print, used when outputing spent time on a task
@@ -175,11 +171,10 @@ def _parsenum(num, mod=None):
     try:
         reader
     except NameError:
-        csv_in = open(filename, newline='')
-        reader = csv.DictReader(csv_in)
-        reader = list(reader)
-        last = len(reader);
-        csv_in.close()
+        with open(filename, newline='') as csv_in:
+            reader = csv.DictReader(csv_in)
+            reader = list(reader)
+            last = len(reader)
 
     for i in range(0, len(num)):
         if num[i] == 'last':
@@ -193,13 +188,9 @@ def _parsenum(num, mod=None):
 
 # Sets a value to a CSV file
 def _set(num, field, value, value_array = True):
-    csv_in = open(filename, newline='')
-    csv_out =  open(tmp_filename, 'w', newline='')
-    reader = csv.DictReader(csv_in)
-    reader = list(reader)
-
-    writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
-    writer.writeheader()
+    with open(filename, newline='') as csv_in:
+        reader = csv.DictReader(csv_in)
+        reader = list(reader)
 
     if not isinstance(num, list):
         num = [int(num)-1]
@@ -215,18 +206,19 @@ def _set(num, field, value, value_array = True):
         except IndexError:
             print('Error: Nonexistent entry', str(num[i]+1))
 
-    for row in reader:
-        writer.writerow(row)
+    with open(tmp_filename, 'w', newline='') as csv_out:
+        writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in reader:
+            writer.writerow(row)
 
-    csv_in.close()
-    csv_out.close()
     os.rename(tmp_filename, filename)
 
 # Gets a value from a csv file
 def _get(num, field=None):
-    csv_in = open(filename, newline='')
-    reader = csv.DictReader(csv_in)
-    reader = list(reader)
+    with open(filename, newline='') as csv_in:
+        reader = csv.DictReader(csv_in)
+        reader = list(reader)
 
     one_result = False
     if not isinstance(num, list):
@@ -243,8 +235,6 @@ def _get(num, field=None):
                 result.append(reader[num[i]])
         except IndexError:
             print('Error: Nonexistent entry', str(num[i]+1))
-
-    csv_in.close()
 
     if one_result:
         return result[0]
@@ -300,35 +290,35 @@ def _csvfloat(val):
 
 # display all tags and number of tasks, number of important tasks, number of due soon tasks
 def display_tags(args=None):
-    csv_in = open(filename, newline='')
-    reader = csv.DictReader(csv_in)
-    res = {}
-    
-    for row in reader:
-        tags = _csvlist(row['tags'])
-        time_spent = row['time_spent'];
+    with open(filename, newline='') as csv_in:
+        reader = csv.DictReader(csv_in)
+        res = {}
+        
+        for row in reader:
+            tags = _csvlist(row['tags'])
+            time_spent = row['time_spent']
 
-        if tags:
-            for t in tags:
-                if t in res:
-                    r = res[t]
-                    r['count'] += 1
-                    if _isImportant(row['important']):
-                        r['important'] += 1
-                    if _isDue(row['due']):
-                        r['due'] += 1
+            if tags:
+                for t in tags:
+                    if t in res:
+                        r = res[t]
+                        r['count'] += 1
+                        if _isImportant(row['important']):
+                            r['important'] += 1
+                        if _isDue(row['due']):
+                            r['due'] += 1
 
-                    r['time'] += _csvint(row['time_spent'])
-                else:
-                    due = 1 if _isDue(row['due']) else 0
-                    important = 1 if _isImportant(row['important']) else 0
-                    
-                    res[t] = {
-                        'count': 1,
-                        'important': important,
-                        'due':  due,
-                        'time': _csvint(row['time_spent'])
-                    }
+                        r['time'] += _csvint(row['time_spent'])
+                    else:
+                        due = 1 if _isDue(row['due']) else 0
+                        important = 1 if _isImportant(row['important']) else 0
+                        
+                        res[t] = {
+                            'count': 1,
+                            'important': important,
+                            'due':  due,
+                            'time': _csvint(row['time_spent'])
+                        }
 
     if texttable_available:
         table = texttable.Texttable()
@@ -337,8 +327,8 @@ def display_tags(args=None):
         table.set_deco(table.HEADER | table.VLINES)
 
         for r in res:
-            name = r;
-            r = res[r];
+            name = r
+            r = res[r]
             table.add_row([name, r['count'], r['important'], r['due'], _deltatime(r['time'])])
 
         print()
@@ -348,36 +338,36 @@ def display_tags(args=None):
     else:
         print()
         for r in res:
-            name = r;
-            r = res[r];
-            print('+'+name+' \t\t[ count: '+str(r['count'])+', important: '+str(r['important'])+', due: '+str(r['due'])+' ]');
+            name = r
+            r = res[r]
+            print('+'+name+' \t\t[ count: '+str(r['count'])+', important: '+str(r['important'])+', due: '+str(r['due'])+' ]')
         print()
 
 # display all tasklists and number of tasks, number of important tasks, number of due soon tasks
 def display_tasklists(args=None):
-    csv_in = open(filename, newline='')
-    reader = csv.DictReader(csv_in)
-    res = {}
-    for row in reader:
-        if row['tasklist'] in res:
-            r = res[row['tasklist']]
-            r['count'] += 1
-            if _isImportant(row['important']):
-                r['important'] += 1
-            if _isDue(row['due']):
-                r['due'] += 1
-            if row['time_spent'] and row['time_spent'] != '':
-                r['time'] += _csvint(row['time_spent'])
-        else:
-            due = 1 if _isDue(row['due']) else 0
-            important = 1 if _isImportant(row['important']) else 0
-            
-            res[row['tasklist']] = {
-                'count': 1,
-                'important': important,
-                'due':  due,
-                'time': _csvint(row['time_spent'])
-            }
+    with open(filename, newline='') as csv_in:
+        reader = csv.DictReader(csv_in)
+        res = {}
+        for row in reader:
+            if row['tasklist'] in res:
+                r = res[row['tasklist']]
+                r['count'] += 1
+                if _isImportant(row['important']):
+                    r['important'] += 1
+                if _isDue(row['due']):
+                    r['due'] += 1
+                if row['time_spent'] and row['time_spent'] != '':
+                    r['time'] += _csvint(row['time_spent'])
+            else:
+                due = 1 if _isDue(row['due']) else 0
+                important = 1 if _isImportant(row['important']) else 0
+                
+                res[row['tasklist']] = {
+                    'count': 1,
+                    'important': important,
+                    'due':  due,
+                    'time': _csvint(row['time_spent'])
+                }
 
     if texttable_available:
         table = texttable.Texttable()
@@ -386,10 +376,9 @@ def display_tasklists(args=None):
         table.set_deco(table.HEADER | table.VLINES)
 
         for r in res:
-            name = r;
-            r = res[r];
+            name = r
+            r = res[r]
             table.add_row([name, r['count'], r['important'], r['due'], _deltatime(r['time'])])
-            #print '@'+name+' ('+str(r['count'])+')      important: '+str(r['important'])+', due: '+str(r['due']);
 
         print()
         print(table.draw())
@@ -398,9 +387,9 @@ def display_tasklists(args=None):
     else:
         print()
         for r in res:
-            name = r;
-            r = res[r];
-            print('@'+name+' \t\t[ count: '+str(r['count'])+', important: '+str(r['important'])+', due: '+str(r['due'])+' ]');
+            name = r
+            r = res[r]
+            print('@'+name+' \t\t[ count: '+str(r['count'])+', important: '+str(r['important'])+', due: '+str(r['due'])+' ]')
         print()
 
 def _isImportant(string):
@@ -509,43 +498,43 @@ def query(q, reader):
 #TODO: Complex queries, query tag, important and/or due inside a tasklist or a tag
 def display(args=None, details=False):
     
-    csv_in = open(filename, newline='')
-    reader = csv.DictReader(csv_in)
+    with open(filename, newline='') as csv_in:
+        reader = csv.DictReader(csv_in)
 
-    if not texttable_available:
-        details = False
+        if not texttable_available:
+            details = False
 
-    if details:
-        details = texttable.Texttable()
-        details.header(['id', 'task', '*', '!', 'task list', 'tags', 'time'])
-    
-    regular = True
-    if args:
-        q = parseQuery(args)
-        if q:
-            regular = False
-            rows = query(q, reader)
-            
-            if not details:
-                print()
-            
-            for row in rows:
-                _print(row['count'], row, details)
+        if details:
+            details = texttable.Texttable()
+            details.header(['id', 'task', '*', '!', 'task list', 'tags', 'time'])
+        
+        regular = True
+        if args:
+            q = parseQuery(args)
+            if q:
+                regular = False
+                rows = query(q, reader)
                 
-            if not details:
-                print()
-    
-    if regular:
-        count = 1
-        if not details:
-                print()
+                if not details:
+                    print()
                 
-        for row in reader:
-            _print(count, row, details)
-            count += 1
+                for row in rows:
+                    _print(row['count'], row, details)
+                    
+                if not details:
+                    print()
+        
+        if regular:
+            count = 1
+            if not details:
+                    print()
+                    
+            for row in reader:
+                _print(count, row, details)
+                count += 1
 
-        if not details:
-                print()
+            if not details:
+                    print()
 
     if details:
         details.set_cols_width([3, 30, 1, 1, 10, 8, 8])
@@ -556,8 +545,6 @@ def display(args=None, details=False):
         print(details.draw())
         print()
 
-    csv_in.close()
-
 
 def display_detailed(args=None):
     display(args, True);
@@ -565,30 +552,28 @@ def display_detailed(args=None):
 
 # deletes a task
 def delete(num):
-    csv_in = open(filename, newline='')
-    csv_out =  open(tmp_filename, 'w', newline='')
-    reader = csv.DictReader(csv_in)
-    reader = list(reader)
+    with open(filename, newline='') as csv_in:
+        reader = csv.DictReader(csv_in)
+        reader = list(reader)
 
     num = _parsenum(num)
 
-    writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
-    writer.writeheader()
+    with open(tmp_filename, 'w', newline='') as csv_out:
+        writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
+        writer.writeheader()
 
-    count = 1
-    for row in reader:
-        flag = True
-        for i in range(0, len(num)):
-            if count == num[i]:
-                flag = False
-                break
+        count = 1
+        for row in reader:
+            flag = True
+            for i in range(0, len(num)):
+                if count == num[i]:
+                    flag = False
+                    break
 
-        if flag:
-            writer.writerow(row)
-        count += 1
+            if flag:
+                writer.writerow(row)
+            count += 1
 
-    csv_in.close()
-    csv_out.close()
     os.rename(tmp_filename, filename)
 
 
@@ -656,27 +641,23 @@ def logtime(filename, sec, taskid):
     log['year'] = d.year
     
     if not os.path.exists(path):
-        csv_out =  open(path, 'w', newline='')
-        writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerow(log)
-        csv_out.close()
+        with open(path, 'w', newline='') as csv_out:
+            writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerow(log)
     else:
         tmp = _tmppath(filename)
-        csv_in = open(path, newline='')
-        csv_out =  open(tmp, 'w', newline='')
-        reader = csv.DictReader(csv_in)
-        writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
-        writer.writeheader()
-        
-        count = 1
-        for row in reader:
-            writer.writerow(row)
-            count += 1
+        with open(path, newline='') as csv_in, open(tmp, 'w', newline='') as csv_out:
+            reader = csv.DictReader(csv_in)
+            writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
+            writer.writeheader()
+            
+            count = 1
+            for row in reader:
+                writer.writerow(row)
+                count += 1
 
-        writer.writerow(log)
-        csv_in.close()
-        csv_out.close()
+            writer.writerow(log)
         os.rename(tmp, path)
 
 def addtime(): #add hours to hours spent
@@ -866,29 +847,25 @@ def new(args):
     new_task['task'] = args.strip()
 
     if not os.path.exists(filename):
-        csv_out =  open(filename, 'w', newline='')
-        writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerow(new_task)
+        with open(filename, 'w', newline='') as csv_out:
+            writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerow(new_task)
         
         print('Added task 1')
-        csv_out.close()
     else:
-        csv_in = open(filename, newline='')
-        csv_out =  open(tmp_filename, 'w', newline='')
-        reader = csv.DictReader(csv_in)
-        writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
-        writer.writeheader()
-        
-        count = 1
-        for row in reader:
-            writer.writerow(row)
-            count += 1
-        print('Added task ' + str(count))
+        with open(filename, newline='') as csv_in, open(tmp_filename, 'w', newline='') as csv_out:
+            reader = csv.DictReader(csv_in)
+            writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
+            writer.writeheader()
+            
+            count = 1
+            for row in reader:
+                writer.writerow(row)
+                count += 1
+            print('Added task ' + str(count))
 
-        writer.writerow(new_task)
-        csv_in.close()
-        csv_out.close()
+            writer.writerow(new_task)
         os.rename(tmp_filename, filename)
 
 
