@@ -73,7 +73,7 @@ def _readconf(file_path):
 
     try:
         f = open(file_path)
-        conf.readfp(f)
+        conf.read_file(f)
         f.close
     except IOError as e:
         print("I/O error({0}): {1}".format(e.errno, e.strerror))
