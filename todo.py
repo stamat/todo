@@ -262,7 +262,7 @@ def _csvlist(string):
 # executes a command from a dictionary of commands
 def _execute(command, args=None):
     if command in fn:
-        fn[command](value)
+        fn[command](args)
     else:
         print('Error: Unknown command',command)
 
