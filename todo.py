@@ -51,15 +51,13 @@ config_cfg = os.path.join(config_path, 'config.cfg')
 
 # Recursive ask to set the directory untill the the pathe xists
 def _bother(default):
-    npath = input('Enter directory to store data files (default='+default+'):').strip()
+    npath = input(f'Enter directory to store data files (default={default}):').strip()
     if npath == "":
         print('As you command sir, we\'ll be using the default path')
         return default
 
-    try:
-        assert os.path.exists(npath) and os.path.isdir(npath)
-    except AssertionError:
-        print('Error: Sorry, the directory "'+npath+'" doesn\'t exits! Please try again.')
+    if not (os.path.exists(npath) and os.path.isdir(npath)):
+        print(f'Error: Sorry, the directory "{npath}" doesn\'t exist! Please try again.')
         return _bother(default)
 
     return npath
@@ -176,7 +174,7 @@ def _parsenum(num, mod=None):
             reader = list(reader)
             last = len(reader)
 
-    for i in range(0, len(num)):
+    for i in range(len(num)):
         if num[i] == 'last':
             num[i] = last
         num[i] = int(num[i])
@@ -196,7 +194,7 @@ def _set(num, field, value, value_array = True):
         num = [int(num)-1]
         value = [value]
 
-    for i in range(0, len(num)):
+    for i in range(len(num)):
         try:
             if field:
                 reader[num[i]][field] = value[i] if value_array else value
@@ -227,7 +225,7 @@ def _get(num, field=None):
 
     result = []
 
-    for i in range(0, len(num)):
+    for i in range(len(num)):
         try:
             if field:
                 result.append(reader[num[i]][field])
@@ -565,7 +563,7 @@ def delete(num):
         count = 1
         for row in reader:
             flag = True
-            for i in range(0, len(num)):
+            for i in range(len(num)):
                 if count == num[i]:
                     flag = False
                     break
@@ -673,7 +671,7 @@ def due(num):
 
     res = _get(num, 'due')
 
-    for i in range(0, len(num)):
+    for i in range(len(num)):
         if res[i] == '':
             res[i] = 0
         else:
@@ -694,7 +692,7 @@ def important(num):
 
     res = _get(num, 'important')
 
-    for i in range(0, len(num)):
+    for i in range(len(num)):
         if res[i] == '':
             res[i] = 0
         else:
@@ -742,7 +740,7 @@ def tag(args):
     result = []
 
     nntags = set(ntags)
-    for i in range(0, len(num)):
+    for i in range(len(num)):
         if tags[i]:
             tg = _csvlist(tags[i])
             if tg:
@@ -773,7 +771,7 @@ def rmtag(args):
     result = []
 
     nntags = set(ntags)
-    for i in range(0, len(num)):
+    for i in range(len(num)):
         if tags[i]:
             tg = _csvlist(tags[i])
             if tg:
@@ -800,7 +798,7 @@ def _err(string, code=None):
 def edit(args):
     if not args:
         _err('You need to pass an ID of a task you would like to edit', 'invalid argument')
-        pass
+        return
     pat_edit = re.compile(r"^([1-9]{1}[0-9]*|last)\s(.*)")
     mo = pat_edit.match(args)
     if mo:
