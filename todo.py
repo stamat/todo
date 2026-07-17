@@ -178,14 +178,20 @@ def _parsenum(num, mod=None):
             reader = list(reader)
             last = len(reader)
 
-    for i in range(len(num)):
-        if num[i] == 'last':
-            num[i] = last
-        num[i] = int(num[i])
+    result = []
+    for token in num:
+        if token == 'last':
+            token = last
+        try:
+            n = int(token)
+        except (ValueError, TypeError):
+            _err(f'invalid task id "{token}", expected a number', 'invalid argument')
+            continue
         if mod:
-            num[i] += mod
+            n += mod
+        result.append(n)
 
-    return num
+    return result
 
 
 # Sets a value to a CSV file
