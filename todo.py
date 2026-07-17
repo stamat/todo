@@ -113,16 +113,16 @@ if not os.path.exists(config_path):
 if not os.path.exists(config_cfg):
     uname = os.path.split(user_path) #XXX: Will this always work?
     uname = uname[-1]
-    print('''
-TODO v{ver}
+    print(f'''
+TODO v{version}
 the simple CLI task manager with time tracking
 ----------------------------------------------
 
-        Oh hai, {name}!
+        Oh hai, {uname.capitalize()}!
 
 It looks like it\'s your first time using this application!?
 If you wish you can enter a directory where you would like to save the CSV todo data files. Saving them to Dropbox folder can be a good idea to backup them and access them across the devices.
-'''.format(ver=version, name=uname.capitalize()))
+''')
 
     npath = _bother(config_path)
 
