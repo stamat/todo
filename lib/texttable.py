@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # texttable - module for creating simple ASCII tables
 # Copyright (C) 2003-2011 Gerome Fournier <jef(at)foutaise.org>
