@@ -8,12 +8,17 @@ point HOME at a throwaway dir with a pre-seeded config BEFORE importing it.
 '''
 
 import os
+import io
 import sys
+import csv
+import contextlib
 import tempfile
 import configparser
 import unittest
 
-# --- make todo.py importable without triggering the interactive first-run setup
+# todo.py now runs its config/first-run side effects inside _init() (called from
+# _main()), so the module imports cleanly. HOME is still pointed at a throwaway
+# dir so nothing can touch a real ~/.todo if _init() ever runs.
 _TMP = tempfile.mkdtemp(prefix='todo_test_')
 os.environ['HOME'] = _TMP
 os.makedirs(os.path.join(_TMP, '.todo'), exist_ok=True)
@@ -26,6 +31,26 @@ sys.argv = ['todo.py']  # empty command line; execution is guarded by __main__ a
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import todo  # noqa: E402
+
+
+def _seed_csv(rows):
+    '''Write rows to a fresh todo.csv and point todo's globals at it.'''
+    d = tempfile.mkdtemp(prefix='todo_io_')
+    path = os.path.join(d, 'todo.csv')
+    with open(path, 'w', newline='') as f:
+        w = csv.DictWriter(f, fieldnames=todo.fieldnames)
+        w.writeheader()
+        for r in rows:
+            w.writerow(r)
+    todo.destination_dir = d
+    todo.filename = path
+    todo.tmp_filename = os.path.join(d, 'tmp_todo.csv')
+    return path
+
+
+def _read_csv():
+    with open(todo.filename, newline='') as f:
+        return list(csv.DictReader(f))
 
 
 class TestDeltatime(unittest.TestCase):
@@ -155,6 +180,75 @@ class TestSetconf(unittest.TestCase):
         todo._setconf(conf, 'general', 'dir', '/a')
         todo._setconf(conf, 'general', 'dir', '/b')
         self.assertEqual(conf.get('general', 'dir'), '/b')
+
+
+class TestDetailsRegression(unittest.TestCase):
+    '''--details used int(row['due']); 'soon'/'later'/'' raised ValueError.'''
+    def test_details_survives_non_int_status(self):
+        _seed_csv([
+            {'task': 'a', 'important': '', 'due': 'soon',
+             'tasklist': 'work', 'tags': "['x']", 'time_spent': '90'},
+            {'task': 'b', 'important': '1', 'due': 'later',
+             'tasklist': '', 'tags': '', 'time_spent': ''},
+        ])
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            todo.display_detailed()  # must not raise
+        out = buf.getvalue()
+        self.assertIn('a', out)
+        self.assertIn('b', out)
+
+
+class TestParsenum(unittest.TestCase):
+    def setUp(self):
+        _seed_csv([{'task': 't1'}, {'task': 't2'}, {'task': 't3'}])
+
+    def test_valid(self):
+        self.assertEqual(todo._parsenum('2'), [2])
+
+    def test_last(self):
+        self.assertEqual(todo._parsenum('last'), [3])
+
+    def test_mod(self):
+        self.assertEqual(todo._parsenum('2', -1), [1])
+
+    def test_skips_garbage(self):
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            self.assertEqual(todo._parsenum('1,abc,3'), [1, 3])
+        self.assertIn('invalid task id', buf.getvalue())
+
+    def test_all_garbage_returns_empty(self):
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(todo._parsenum('nope'), [])
+
+
+class TestGetSet(unittest.TestCase):
+    def test_roundtrip(self):
+        _seed_csv([{'task': 'old'}, {'task': 'two'}])
+        todo._set([0], 'task', 'new', False)  # 0-based list, like _parsenum(x, -1)
+        self.assertEqual(todo._get(1, 'task'), 'new')
+        self.assertEqual(todo._get(2, 'task'), 'two')
+
+
+class TestDelete(unittest.TestCase):
+    def test_delete_middle(self):
+        _seed_csv([{'task': 'a'}, {'task': 'b'}, {'task': 'c'}])
+        with contextlib.redirect_stdout(io.StringIO()):
+            todo.delete('2')
+        self.assertEqual([r['task'] for r in _read_csv()], ['a', 'c'])
+
+
+class TestNew(unittest.TestCase):
+    def test_parses_tasklist_and_tags(self):
+        _seed_csv([])  # header only
+        with contextlib.redirect_stdout(io.StringIO()):
+            todo.new('buy milk @home +urgent')
+        rows = _read_csv()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['task'], 'buy milk')
+        self.assertEqual(rows[0]['tasklist'], 'home')
+        self.assertEqual(todo._csvlist(rows[0]['tags']), ['urgent'])
 
 
 if __name__ == '__main__':
