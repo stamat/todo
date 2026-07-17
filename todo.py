@@ -51,16 +51,16 @@ config_cfg = os.path.join(config_path, 'config.cfg')
 
 # Recursive ask to set the directory untill the the pathe xists
 def _bother(default):
-    npath = input(f'Enter directory to store data files (default={default}):').strip()
-    if npath == "":
-        print('As you command sir, we\'ll be using the default path')
-        return default
+    while True:
+        npath = input(f'Enter directory to store data files (default={default}):').strip()
+        if npath == "":
+            print('As you command sir, we\'ll be using the default path')
+            return default
 
-    if not (os.path.exists(npath) and os.path.isdir(npath)):
+        if os.path.exists(npath) and os.path.isdir(npath):
+            return npath
+
         print(f'Error: Sorry, the directory "{npath}" doesn\'t exist! Please try again.')
-        return _bother(default)
-
-    return npath
 
 # Reads an INI file and returns a ConfigParser object that can be iterated
 def _readconf(file_path):
