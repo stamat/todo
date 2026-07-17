@@ -75,7 +75,7 @@ def _readconf(file_path):
         f = open(file_path)
         conf.read_file(f)
         f.close()
-    except IOError as e:
+    except OSError as e:
         print("I/O error({0}): {1}".format(e.errno, e.strerror))
         raise
 
@@ -95,7 +95,7 @@ def _writeconf(file_path, conf):
         f = open(file_path, 'w')
         conf.write(f)
         f.close()
-    except IOError as e:
+    except OSError as e:
         print("I/O error({0}): {1}".format(e.errno, e.strerror))
         raise
 
