@@ -74,7 +74,7 @@ def _readconf(file_path):
     try:
         f = open(file_path)
         conf.read_file(f)
-        f.close
+        f.close()
     except IOError as e:
         print("I/O error({0}): {1}".format(e.errno, e.strerror))
         raise
@@ -94,7 +94,7 @@ def _writeconf(file_path, conf):
     try:
         f = open(file_path, 'wb')
         conf.write(f)
-        f.close
+        f.close()
     except IOError as e:
         print("I/O error({0}): {1}".format(e.errno, e.strerror))
         raise
@@ -157,7 +157,7 @@ if not os.path.exists(filename):
     csv_out =  open(filename, 'w')
     writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
     writer.writeheader()
-    csv_out.close
+    csv_out.close()
 
 
 # updated print, used when outputing spent time on a task
@@ -179,7 +179,7 @@ def _parsenum(num, mod=None):
         reader = csv.DictReader(csv_in)
         reader = list(reader)
         last = len(reader);
-        csv_in.close
+        csv_in.close()
 
     for i in range(0, len(num)):
         if num[i] == 'last':
@@ -218,8 +218,8 @@ def _set(num, field, value, value_array = True):
     for row in reader:
         writer.writerow(row)
 
-    csv_in.close
-    csv_out.close
+    csv_in.close()
+    csv_out.close()
     os.rename(tmp_filename, filename)
 
 # Gets a value from a csv file
@@ -244,7 +244,7 @@ def _get(num, field=None):
         except IndexError:
             print('Error: Nonexistent entry', str(num[i]+1))
 
-    csv_in.close
+    csv_in.close()
 
     if one_result:
         return result[0]
@@ -556,7 +556,7 @@ def display(args=None, details=False):
         print(details.draw())
         print()
 
-    csv_in.close
+    csv_in.close()
 
 
 def display_detailed(args=None):
@@ -587,8 +587,8 @@ def delete(num):
             writer.writerow(row)
         count += 1
 
-    csv_in.close
-    csv_out.close
+    csv_in.close()
+    csv_out.close()
     os.rename(tmp_filename, filename)
 
 
@@ -660,7 +660,7 @@ def logtime(filename, sec, taskid):
         writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerow(log)
-        csv_out.close
+        csv_out.close()
     else:
         tmp = _tmppath(filename)
         csv_in = open(path)
@@ -675,8 +675,8 @@ def logtime(filename, sec, taskid):
             count += 1
 
         writer.writerow(log)
-        csv_in.close
-        csv_out.close
+        csv_in.close()
+        csv_out.close()
         os.rename(tmp, path)
 
 def addtime(): #add hours to hours spent
@@ -872,7 +872,7 @@ def new(args):
         writer.writerow(new_task)
         
         print('Added task 1')
-        csv_out.close
+        csv_out.close()
     else:
         csv_in = open(filename)
         csv_out =  open(tmp_filename, 'w')
@@ -887,8 +887,8 @@ def new(args):
         print('Added task ' + str(count))
 
         writer.writerow(new_task)
-        csv_in.close
-        csv_out.close
+        csv_in.close()
+        csv_out.close()
         os.rename(tmp_filename, filename)
 
 
