@@ -581,7 +581,7 @@ def delete(num):
 
 # on completion a task is moved to the other file todo_complete.csv where it's stored for later mining
 def complete(arg):
-    pass
+    _err('completing tasks is not implemented yet', 'not implemented')
 
 #task time tracking
 def track(num):
@@ -817,7 +817,7 @@ def edit(args):
 
 def show(args):
     #shows a single task with all the details
-    pass
+    _err('showing a single task is not implemented yet', 'not implemented')
 
 # adds a new task
 def new(args):
