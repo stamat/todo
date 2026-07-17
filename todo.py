@@ -92,7 +92,7 @@ def _setconf(conf, section, key, value):
 # Writes INI ConfigParser object to a file
 def _writeconf(file_path, conf):
     try:
-        f = open(file_path, 'wb')
+        f = open(file_path, 'w')
         conf.write(f)
         f.close()
     except IOError as e:
@@ -154,7 +154,7 @@ tmp_filename_completed = os.path.join(destination_dir, tmp_filename_completed)
 
 # create the todo file if it doesn't exists
 if not os.path.exists(filename):
-    csv_out =  open(filename, 'w')
+    csv_out =  open(filename, 'w', newline='')
     writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
     writer.writeheader()
     csv_out.close()
@@ -175,7 +175,7 @@ def _parsenum(num, mod=None):
     try:
         reader
     except NameError:
-        csv_in = open(filename)
+        csv_in = open(filename, newline='')
         reader = csv.DictReader(csv_in)
         reader = list(reader)
         last = len(reader);
@@ -193,8 +193,8 @@ def _parsenum(num, mod=None):
 
 # Sets a value to a CSV file
 def _set(num, field, value, value_array = True):
-    csv_in = open(filename)
-    csv_out =  open(tmp_filename, 'w')
+    csv_in = open(filename, newline='')
+    csv_out =  open(tmp_filename, 'w', newline='')
     reader = csv.DictReader(csv_in)
     reader = list(reader)
 
@@ -224,7 +224,7 @@ def _set(num, field, value, value_array = True):
 
 # Gets a value from a csv file
 def _get(num, field=None):
-    csv_in = open(filename)
+    csv_in = open(filename, newline='')
     reader = csv.DictReader(csv_in)
     reader = list(reader)
 
@@ -300,7 +300,7 @@ def _csvfloat(val):
 
 # display all tags and number of tasks, number of important tasks, number of due soon tasks
 def display_tags(args=None):
-    csv_in = open(filename)
+    csv_in = open(filename, newline='')
     reader = csv.DictReader(csv_in)
     res = {}
     
@@ -355,7 +355,7 @@ def display_tags(args=None):
 
 # display all tasklists and number of tasks, number of important tasks, number of due soon tasks
 def display_tasklists(args=None):
-    csv_in = open(filename)
+    csv_in = open(filename, newline='')
     reader = csv.DictReader(csv_in)
     res = {}
     for row in reader:
@@ -509,7 +509,7 @@ def query(q, reader):
 #TODO: Complex queries, query tag, important and/or due inside a tasklist or a tag
 def display(args=None, details=False):
     
-    csv_in = open(filename)
+    csv_in = open(filename, newline='')
     reader = csv.DictReader(csv_in)
 
     if not texttable_available:
@@ -565,8 +565,8 @@ def display_detailed(args=None):
 
 # deletes a task
 def delete(num):
-    csv_in = open(filename)
-    csv_out =  open(tmp_filename, 'w')
+    csv_in = open(filename, newline='')
+    csv_out =  open(tmp_filename, 'w', newline='')
     reader = csv.DictReader(csv_in)
     reader = list(reader)
 
@@ -656,15 +656,15 @@ def logtime(filename, sec, taskid):
     log['year'] = d.year
     
     if not os.path.exists(path):
-        csv_out =  open(path, 'w')
+        csv_out =  open(path, 'w', newline='')
         writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerow(log)
         csv_out.close()
     else:
         tmp = _tmppath(filename)
-        csv_in = open(path)
-        csv_out =  open(tmp, 'w')
+        csv_in = open(path, newline='')
+        csv_out =  open(tmp, 'w', newline='')
         reader = csv.DictReader(csv_in)
         writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
         writer.writeheader()
@@ -866,7 +866,7 @@ def new(args):
     new_task['task'] = args.strip()
 
     if not os.path.exists(filename):
-        csv_out =  open(filename, 'w')
+        csv_out =  open(filename, 'w', newline='')
         writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerow(new_task)
@@ -874,8 +874,8 @@ def new(args):
         print('Added task 1')
         csv_out.close()
     else:
-        csv_in = open(filename)
-        csv_out =  open(tmp_filename, 'w')
+        csv_in = open(filename, newline='')
+        csv_out =  open(tmp_filename, 'w', newline='')
         reader = csv.DictReader(csv_in)
         writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
         writer.writeheader()
