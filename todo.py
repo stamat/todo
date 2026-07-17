@@ -5,7 +5,7 @@
     by Stamat <stamatmail@gmail.com>
 '''
 
-import sys, os, re, time, string
+import sys, os, re, time
 from datetime import datetime, date, timedelta
 import threading, atexit
 import csv, configparser
