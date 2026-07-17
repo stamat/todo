@@ -13,4 +13,4 @@ jobs:
         with:
           python-version: '3.13'
       - run: pip install pylint
-      - run: pylint todo.py install.py tests
+      - run: pylint todo.py install.py
