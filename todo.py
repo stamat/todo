@@ -235,7 +235,7 @@ def _get(num, field=None):
             print('Error: Nonexistent entry', str(num[i]+1))
 
     if one_result:
-        return result[0]
+        return result[0] if result else ''
 
     return result
 
