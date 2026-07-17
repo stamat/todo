@@ -97,10 +97,14 @@ def _writeconf(file_path, conf):
     return True
 
 def _UTCTimestamp():
-    return int( time.mktime(time.gmtime()) )
+    # time.time() is already seconds since the epoch (UTC); the old
+    # mktime(gmtime()) form double-applied the local offset.
+    return int(time.time())
 
 def _UTC2LocalTimestamp(utc_timestamp):
-    return utc_timestamp + (int(time.time()) - _UTCTimestamp())
+    # date/datetime.fromtimestamp() already converts an epoch value to local
+    # time, so no offset adjustment is needed here.
+    return utc_timestamp
 
 
 conf = _readconf(config_cfg)
