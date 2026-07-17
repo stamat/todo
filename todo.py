@@ -7,7 +7,7 @@
 
 import sys, os, re, time
 from datetime import datetime, date, timedelta
-import threading, atexit
+import threading
 import csv, configparser
 
 texttable_available = True
@@ -264,14 +264,7 @@ def _execute(command, args=None):
     else:
         print('Error: Unknown command',command)
 
-#TODO savetime if tracking a task time and you exit a terminal
-def _savetime():
-    global _TIME
-    if _TIME != 0:
-        _TIME = time.time() - _TIME
-        _set(num, 'time_spent', _TIME)
-
-#atexit.register(_savetime)
+#TODO: persist tracked time if the terminal exits mid-track (see track())
 
 
 def _deltatime(string):
