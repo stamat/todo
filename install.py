@@ -27,18 +27,18 @@ if sudo_uid:
    user_uid = user.pw_uid
    user_gid = user.pw_gid
    
-def rchmod(path, mod, uid=None, gid=None):
+def rchmod(path, dir_mode, file_mode, uid=None, gid=None):
    for root, dirs, files in os.walk(path):
-      def setPriv(root, f):
-         path = os.path.join(root, f)
+      def setPriv(root, f, mode):
+         p = os.path.join(root, f)
          if uid is not None and gid is not None:
-            os.chown(path, uid, gid)
-         os.chmod(path, mod)
-      
-      for f in dirs:  
-         setPriv(root, f)
+            os.chown(p, uid, gid)
+         os.chmod(p, mode)
+
+      for f in dirs:
+         setPriv(root, f, dir_mode)
       for f in files:
-         setPriv(root, f)
+         setPriv(root, f, file_mode)
 
 if os.name == 'nt':
     print('Sorry, installation is currently not supported on Windows :\'(')
@@ -51,7 +51,7 @@ lib_path = os.path.join(config_path, 'lib')
 symln_path = '/usr/local/bin/todo'
 
 if not os.path.exists(config_path):
-   os.mkdir(config_path, 0o777)
+   os.mkdir(config_path, 0o755)
    os.chown(config_path, user_uid, user_gid)
 
 #get the version from file todo.py
@@ -63,7 +63,7 @@ shutil.copy('todo.py', config_path)
 if os.path.exists(lib_path):
    shutil.rmtree(lib_path)
 shutil.copytree('lib', lib_path)
-rchmod(config_path, 0o777, user_uid, user_gid)
+rchmod(config_path, 0o755, 0o644, user_uid, user_gid)
 
 try:
    os.symlink(new_exec_path, symln_path)
