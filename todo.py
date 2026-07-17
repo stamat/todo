@@ -269,7 +269,7 @@ def _execute(command, args=None):
 #TODO savetime if tracking a task time and you exit a terminal
 def _savetime():
     global _TIME
-    if _TIME is not 0:
+    if _TIME != 0:
         _TIME = time.time() - _TIME
         _set(num, 'time_spent', _TIME)
 
@@ -579,7 +579,7 @@ def delete(num):
     for row in reader:
         flag = True
         for i in range(0, len(num)):
-            if count is num[i]:
+            if count == num[i]:
                 flag = False
                 break
 
@@ -603,7 +603,7 @@ def track(num):
     _TIME = _get(num, 'time_spent')
     cdif = time.time();
     
-    if _TIME is '':
+    if _TIME == '':
         _TIME = time.time()
     else:
         _TIME = time.time() - int(_TIME)
@@ -693,11 +693,11 @@ def due(num):
     res = _get(num, 'due')
 
     for i in range(0, len(num)):
-        if res[i] is '':
+        if res[i] == '':
             res[i] = 0
         else:
             res[i] = int(res[i])
-        if res[i] is 0:
+        if res[i] == 0:
             res[i] +=1
             print('Task {0} set to due soon'.format(num[i]+1))
         else:
@@ -714,11 +714,11 @@ def important(num):
     res = _get(num, 'important')
 
     for i in range(0, len(num)):
-        if res[i] is '':
+        if res[i] == '':
             res[i] = 0
         else:
             res[i] = int(res[i])
-        if res[i] is 0:
+        if res[i] == 0:
             res[i] +=1
             print('Task {0} set to important'.format(num[i]+1))
         else:
@@ -975,7 +975,7 @@ if m:
             command = c.group(2)
             value = c.group(3)
 
-            if len(dashes) is 1:
+            if len(dashes) == 1:
                 for cm in command:
                     _execute(cm, value)
             else:
