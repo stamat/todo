@@ -51,15 +51,15 @@ config_cfg = os.path.join(config_path, 'config.cfg')
 
 # Recursive ask to set the directory untill the the pathe xists
 def _bother(default):
-    npath = input('Enter directory to store data files (default='+default+'):').strip()
+    npath = raw_input('Enter directory to store data files (default='+default+'):').strip()
     if npath == "":
-        print('As you command sir, we\'ll be using the default path')
+        print 'As you command sir, we\'ll be using the default path'
         return default
 
     try:
         assert os.path.exists(npath) and os.path.isdir(npath)
     except AssertionError:
-        print('Error: Sorry, the directory "'+npath+'" doesn\'t exits! Please try again.')
+        print 'Error: Sorry, the directory "'+npath+'" doesn\'t exits! Please try again.'
         return _bother(default)
 
     return npath
@@ -76,7 +76,7 @@ def _readconf(file_path):
         conf.readfp(f)
         f.close
     except IOError as e:
-        print("I/O error({0}): {1}".format(e.errno, e.strerror))
+        print "I/O error({0}): {1}".format(e.errno, e.strerror)
         raise
 
     return conf
@@ -96,7 +96,7 @@ def _writeconf(file_path, conf):
         conf.write(f)
         f.close
     except IOError as e:
-        print("I/O error({0}): {1}".format(e.errno, e.strerror))
+        print "I/O error({0}): {1}".format(e.errno, e.strerror)
         raise
 
     return True
@@ -118,7 +118,7 @@ if not os.path.exists(config_path):
 if not os.path.exists(config_cfg):
     uname = os.path.split(user_path) #XXX: Will this always work?
     uname = uname[-1]
-    print('''
+    print '''
 TODO v{ver}
 the simple CLI task manager with time tracking
 ----------------------------------------------
@@ -127,7 +127,7 @@ the simple CLI task manager with time tracking
 
 It looks like it\'s your first time using this application!?
 If you wish you can enter a directory where you would like to save the CSV todo data files. Saving them to Dropbox folder can be a good idea to backup them and access them across the devices.
-'''.format(ver=version, name=uname.capitalize()))
+'''.format(ver=version, name=uname.capitalize())
 
     npath = _bother(config_path)
 
@@ -135,7 +135,7 @@ If you wish you can enter a directory where you would like to save the CSV todo 
     _setconf(conf, 'general', 'name', uname.capitalize())
     _writeconf(config_cfg, conf)
 
-    print('''
+    print '''
 Thanks, you're a real pal!
 
 
@@ -144,7 +144,7 @@ Thanks, you're a real pal!
         `Y8888888Y'
           `Y888Y'
             `Y'
-''')
+'''
 
 destination_dir = conf.get('general', 'dir')
 filename = os.path.join(destination_dir, filename)
@@ -164,7 +164,7 @@ if not os.path.exists(filename):
 def _uprint(new):
     CURSOR_UP_ONE = '\x1b[1A'
     ERASE_LINE = '\x1b[2K'
-    print((CURSOR_UP_ONE + ERASE_LINE + str(new)))
+    print(CURSOR_UP_ONE + ERASE_LINE + str(new))
 
 
 # gets the current task number, if the value past is string "last" then it is the length of the CSV rows
@@ -213,7 +213,7 @@ def _set(num, field, value, value_array = True):
                 reader[num[i]] = value[i] if value_array else value
             reader[num[i]]['last_modified'] = _UTCTimestamp()
         except IndexError:
-            print('Error: Nonexistent entry', str(num[i]+1))
+            print 'Error: Nonexistent entry', str(num[i]+1)
 
     for row in reader:
         writer.writerow(row)
@@ -242,7 +242,7 @@ def _get(num, field=None):
             else:
                 result.append(reader[num[i]])
         except IndexError:
-            print('Error: Nonexistent entry', str(num[i]+1))
+            print 'Error: Nonexistent entry', str(num[i]+1)
 
     csv_in.close
 
@@ -264,7 +264,7 @@ def _execute(command, args=None):
     if command in fn:
         fn[command](value)
     else:
-        print('Error: Unknown command',command)
+        print 'Error: Unknown command',command
 
 #TODO savetime if tracking a task time and you exit a terminal
 def _savetime():
@@ -341,17 +341,17 @@ def display_tags(args=None):
             r = res[r];
             table.add_row([name, r['count'], r['important'], r['due'], _deltatime(r['time'])])
 
-        print()
-        print(table.draw())
-        print()
+        print
+        print table.draw()
+        print
 
     else:
-        print()
+        print
         for r in res:
             name = r;
             r = res[r];
-            print('+'+name+' \t\t[ count: '+str(r['count'])+', important: '+str(r['important'])+', due: '+str(r['due'])+' ]');
-        print()
+            print '+'+name+' \t\t[ count: '+str(r['count'])+', important: '+str(r['important'])+', due: '+str(r['due'])+' ]';
+        print
 
 # display all tasklists and number of tasks, number of important tasks, number of due soon tasks
 def display_tasklists(args=None):
@@ -391,17 +391,17 @@ def display_tasklists(args=None):
             table.add_row([name, r['count'], r['important'], r['due'], _deltatime(r['time'])])
             #print '@'+name+' ('+str(r['count'])+')      important: '+str(r['important'])+', due: '+str(r['due']);
 
-        print()
-        print(table.draw())
-        print()
+        print
+        print table.draw()
+        print
 
     else:
-        print()
+        print
         for r in res:
             name = r;
             r = res[r];
-            print('@'+name+' \t\t[ count: '+str(r['count'])+', important: '+str(r['important'])+', due: '+str(r['due'])+' ]');
-        print()
+            print '@'+name+' \t\t[ count: '+str(r['count'])+', important: '+str(r['important'])+', due: '+str(r['due'])+' ]';
+        print
 
 def _isImportant(string):
     if not string or string == '0':
@@ -419,7 +419,7 @@ def _isDue(string):
 def _print(num, row, details=False):
     if not details:
         tl = ' @'+row['tasklist'] if row['tasklist'] and row['tasklist'].strip() != '' else '';
-        print(str(num) + '  ' +row['task']+tl)
+        print str(num) + '  ' +row['task']+tl
     else:
         tags = _csvlist(row['tags'])
         if tags:
@@ -527,34 +527,34 @@ def display(args=None, details=False):
             rows = query(q, reader)
             
             if not details:
-                print()
+                print
             
             for row in rows:
                 _print(row['count'], row, details)
                 
             if not details:
-                print()
+                print
     
     if regular:
         count = 1
         if not details:
-                print()
+                print
                 
         for row in reader:
             _print(count, row, details)
             count += 1
 
         if not details:
-                print()
+                print
 
     if details:
         details.set_cols_width([3, 30, 1, 1, 10, 8, 8])
         details.set_deco(details.HEADER | details.VLINES)
         details.set_chars([' ',' ',' ','-'])
 
-        print()
-        print(details.draw())
-        print()
+        print
+        print details.draw()
+        print
 
     csv_in.close
 
@@ -616,7 +616,7 @@ def track(num):
     delay = 1
     t = threading.Thread(target = timed_output, args = (_TIME, delay))
 
-    print()
+    print
     t.daemon = True
     t.start()
 
@@ -699,10 +699,10 @@ def due(num):
             res[i] = int(res[i])
         if res[i] is 0:
             res[i] +=1
-            print('Task {0} set to due soon'.format(num[i]+1))
+            print 'Task {0} set to due soon'.format(num[i]+1)
         else:
             res[i] -=1
-            print('Task {0} set to due later'.format(num[i]+1))
+            print 'Task {0} set to due later'.format(num[i]+1)
 
     _set(num, 'due', res)
 
@@ -720,10 +720,10 @@ def important(num):
             res[i] = int(res[i])
         if res[i] is 0:
             res[i] +=1
-            print('Task {0} set to important'.format(num[i]+1))
+            print 'Task {0} set to important'.format(num[i]+1)
         else:
             res[i] -=1
-            print('Task {0} set to unimportant'.format(num[i]+1))
+            print 'Task {0} set to unimportant'.format(num[i]+1)
 
     _set(num, 'important', res)
 
@@ -813,7 +813,7 @@ def imprt():
 
 def _err(string, code=None):
     code = ' ['+code+']' if code else ''
-    print('Error{1}: {0}'.format(string, code))
+    print 'Error{1}: {0}'.format(string, code)
 
 # edits task by a given id, asks user to dubmit the new title
 def edit(args):
@@ -871,7 +871,7 @@ def new(args):
         writer.writeheader()
         writer.writerow(new_task)
         
-        print('Added task 1')
+        print 'Added task 1'
         csv_out.close
     else:
         csv_in = open(filename)
@@ -884,7 +884,7 @@ def new(args):
         for row in reader:
             writer.writerow(row)
             count += 1
-        print('Added task ' + str(count))
+        print 'Added task ' + str(count)
 
         writer.writerow(new_task)
         csv_in.close
@@ -894,7 +894,7 @@ def new(args):
 
 # prints a help text
 def help(args=None):
-    print('''
+    print '''
 TODO - CLI task manager with time tracking
 <http://todotron.com>
 
@@ -923,13 +923,13 @@ Usage:  todo ...TITLE...[@TASKLIST][+TAG]
     --tags                              lists all tags
     -h, --help                          displays this help
     -v, --version                       displays version
-''')
+'''
 
 #TODO: uninstall
 #TODO: update
 
 def vers(args=None):
-    print('version: ' + version)
+    print 'version: ' + version
 
 # Connects commands with real functions
 fn = {
