@@ -107,17 +107,23 @@ def _UTC2LocalTimestamp(utc_timestamp):
     return utc_timestamp
 
 
-conf = _readconf(config_cfg)
+# Reads config (running the interactive first-run setup if needed), resolves the
+# data-file paths and makes sure the todo file exists. Kept out of import time so
+# the module can be imported (e.g. by the test suite) without side effects.
+def _init():
+    global conf, destination_dir
+    global filename, tmp_filename, filename_completed, tmp_filename_completed
 
+    conf = _readconf(config_cfg)
 
-# FIRST INIT
-if not os.path.exists(config_path):
-    os.mkdir(config_path)
+    # FIRST INIT
+    if not os.path.exists(config_path):
+        os.mkdir(config_path)
 
-if not os.path.exists(config_cfg):
-    uname = os.path.split(user_path) #XXX: Will this always work?
-    uname = uname[-1]
-    print(f'''
+    if not os.path.exists(config_cfg):
+        uname = os.path.split(user_path) #XXX: Will this always work?
+        uname = uname[-1]
+        print(f'''
 TODO v{version}
 the simple CLI task manager with time tracking
 ----------------------------------------------
@@ -128,13 +134,13 @@ It looks like it\'s your first time using this application!?
 If you wish you can enter a directory where you would like to save the CSV todo data files. Saving them to Dropbox folder can be a good idea to backup them and access them across the devices.
 ''')
 
-    npath = _bother(config_path)
+        npath = _bother(config_path)
 
-    _setconf(conf, 'general', 'dir', npath)
-    _setconf(conf, 'general', 'name', uname.capitalize())
-    _writeconf(config_cfg, conf)
+        _setconf(conf, 'general', 'dir', npath)
+        _setconf(conf, 'general', 'name', uname.capitalize())
+        _writeconf(config_cfg, conf)
 
-    print('''
+        print('''
 Thanks, you're a real pal!
 
 
@@ -145,17 +151,17 @@ Thanks, you're a real pal!
             `Y'
 ''')
 
-destination_dir = conf.get('general', 'dir')
-filename = os.path.join(destination_dir, filename)
-tmp_filename = os.path.join(destination_dir, tmp_filename)
-filename_completed = os.path.join(destination_dir, filename_completed)
-tmp_filename_completed = os.path.join(destination_dir, tmp_filename_completed)
+    destination_dir = conf.get('general', 'dir')
+    filename = os.path.join(destination_dir, filename)
+    tmp_filename = os.path.join(destination_dir, tmp_filename)
+    filename_completed = os.path.join(destination_dir, filename_completed)
+    tmp_filename_completed = os.path.join(destination_dir, tmp_filename_completed)
 
-# create the todo file if it doesn't exists
-if not os.path.exists(filename):
-    with open(filename, 'w', newline='') as csv_out:
-        writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
-        writer.writeheader()
+    # create the todo file if it doesn't exists
+    if not os.path.exists(filename):
+        with open(filename, 'w', newline='') as csv_out:
+            writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
+            writer.writeheader()
 
 
 # updated print, used when outputing spent time on a task
@@ -942,6 +948,8 @@ fn = {
 }
 
 def _main():
+    _init()
+
     # parse commands passed as arguments
     m = pat_cmds.findall(args)
 
