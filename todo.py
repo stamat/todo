@@ -5,10 +5,14 @@
     by Stamat <stamatmail@gmail.com>
 '''
 
-import sys, os, re, time
+import sys
+import os
+import re
+import time
 from datetime import datetime, date, timedelta
 import threading
-import csv, configparser
+import csv
+import configparser
 
 texttable_available = True
 try:
