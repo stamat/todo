@@ -407,7 +407,7 @@ def _isDue(string):
 
 def _print(num, row, details=False):
     if not details:
-        tl = ' @'+row['tasklist'] if row['tasklist'] and row['tasklist'].strip() != '' else '';
+        tl = ' @'+row['tasklist'] if row['tasklist'] and row['tasklist'].strip() != '' else ''
         print(str(num) + '  ' +row['task']+tl)
     else:
         tags = _csvlist(row['tags'])
@@ -416,7 +416,7 @@ def _print(num, row, details=False):
         else:
             tags = ''
         time = _deltatime(row['time_spent'])
-        details.add_row([num, row['task'], 'o' if int(row['important']) else '', 'o' if int(row['due']) else '', row['tasklist'], tags, time]);
+        details.add_row([num, row['task'], 'o' if int(row['important']) else '', 'o' if int(row['due']) else '', row['tasklist'], tags, time])
 
 
 def parseQuery(s):
@@ -547,7 +547,7 @@ def display(args=None, details=False):
 
 
 def display_detailed(args=None):
-    display(args, True);
+    display(args, True)
 
 
 # deletes a task
@@ -586,7 +586,7 @@ def track(num):
     #TODO: log of times per day / statistics
     global _TIME, _SPENT_TIME
     _TIME = _get(num, 'time_spent')
-    cdif = time.time();
+    cdif = time.time()
     
     if _TIME == '':
         _TIME = time.time()
