@@ -66,7 +66,7 @@ def _bother(default):
 
 # Reads an INI file and returns a ConfigParser object that can be iterated
 def _readconf(file_path):
-    conf = configparser.RawConfigParser()
+    conf = configparser.ConfigParser()
 
     if not os.path.exists(file_path) and not os.path.isfile(file_path):
         return conf
