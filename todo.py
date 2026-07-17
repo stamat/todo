@@ -292,10 +292,10 @@ def _csvnum(val, fn):
             pass
     return 0
 
-def _csvint(val, fn):
+def _csvint(val):
     return _csvnum(val, int)
 
-def _csvint(val, fn):
+def _csvfloat(val):
     return _csvnum(val, float)
 
 # display all tags and number of tasks, number of important tasks, number of due soon tasks
