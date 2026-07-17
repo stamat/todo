@@ -8,7 +8,7 @@
 import sys, os, re, time, string
 from datetime import datetime, date, timedelta
 import threading, atexit
-import csv, ConfigParser
+import csv, configparser
 
 texttable_available = True
 try:
@@ -66,7 +66,7 @@ def _bother(default):
 
 # Reads an INI file and returns a ConfigParser object that can be iterated
 def _readconf(file_path):
-    conf = ConfigParser.RawConfigParser()
+    conf = configparser.RawConfigParser()
 
     if not os.path.exists(file_path) and not os.path.isfile(file_path):
         return conf
