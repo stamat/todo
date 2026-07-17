@@ -277,7 +277,7 @@ def _savetime():
 
 
 def _deltatime(string):
-    if type(string) is str and string.strip() == '':
+    if isinstance(string, str) and string.strip() == '':
         return '0:00:00'
     time = timedelta(0, float(string))
     return re.sub(r"\.[0-9]+", '', str(time))
