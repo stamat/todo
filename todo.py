@@ -938,27 +938,32 @@ fn = {
     'details': display_detailed
 }
 
-# parse commands passed as arguments
-m = pat_cmds.findall(args)
+def _main():
+    # parse commands passed as arguments
+    m = pat_cmds.findall(args)
 
-if m:
-    #execute commands
-    for cmd in m:
-        c = pat_sepcmd.search(cmd.strip())
-        if c:
-            dashes = c.group(1)
-            command = c.group(2)
-            value = c.group(3)
+    if m:
+        #execute commands
+        for cmd in m:
+            c = pat_sepcmd.search(cmd.strip())
+            if c:
+                dashes = c.group(1)
+                command = c.group(2)
+                value = c.group(3)
 
-            if len(dashes) == 1:
-                for cm in command:
-                    _execute(cm, value)
-            else:
-                _execute(command, value)
+                if len(dashes) == 1:
+                    for cm in command:
+                        _execute(cm, value)
+                else:
+                    _execute(command, value)
 
-else:
-    #add new todo
-    if args.strip() == '':
-       display()
     else:
-        new(args)
+        #add new todo
+        if args.strip() == '':
+           display()
+        else:
+            new(args)
+
+
+if __name__ == '__main__':
+    _main()
